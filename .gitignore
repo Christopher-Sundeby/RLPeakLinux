@@ -1,0 +1,99 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+build
+
+# Tauri/Rust build outputs
+src-tauri/target/
+src-tauri/AppData/
+src-tauri/target/release/bundle/
+
+# Runtime AppData artifacts (created locally at runtime)
+AppData/cache/
+AppData/Backups/
+AppData/ItemsFiles/
+AppData/state/app_state.json
+AppData/catalogs/*.json
+
+# Rocket League / packaged item files
+*.upk
+*.bnk
+
+# Python cache / local tools
+__pycache__/
+*.pyc
+
+# Transient download artifacts
+*.download
+
+.vscode/
+
+# Common release artifact folders
+release/
+releases/
+out/
+artifacts/
+
+# Installer/package artifacts
+*.msi
+*.msix
+*.exe
+*.appinstaller
+*.dmg
+*.pkg
+*.deb
+*.rpm
+*.AppImage
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Secrets / certificates / keys
+*.pem
+*.key
+*.crt
+*.cer
+*.der
+*.pfx
+*.p12
+*.jks
+id_rsa
+id_rsa.pub
+
+# Temp files
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# Internal Codex / project-memory docs
+AGENTS.md
+README_CODEX_WORKFLOW.md
+PROJECT_STATE.md
+DEV_CHECKLIST.md
+CODE_REVIEW.md
+
+manifest.json
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

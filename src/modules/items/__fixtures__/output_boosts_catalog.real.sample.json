@@ -1,0 +1,29 @@
+{
+  "schema": "rl_swap_output_boosts_catalog.minimal.v1",
+  "total_boosts": 1,
+  "base_files": ["Boost_Standard_SF.upk", "SFX_Boost_Standard.bnk"],
+  "base_thumbnail": "Boost_Standard_T_SF.upk",
+  "base_thumbnail_path": "_base_thumbnail/Boost_Standard_T_SF.upk",
+  "boosts": [
+    {
+      "boost_folder": "Boost_AlphaReward",
+      "ingame_boost_name": "(Alpha Reward) Gold Rush",
+      "item_type": "Boost",
+      "output_files": ["Boost_Standard_SF.upk", "SFX_Boost_Standard.bnk"],
+      "remote_files": [
+        {
+          "filename": "Boost_Standard_SF.upk",
+          "remote_path": "Boost/Boost_AlphaReward/Boost_Standard_SF.upk"
+        },
+        {
+          "filename": "SFX_Boost_Standard.bnk",
+          "remote_path": "Boost/Boost_AlphaReward/SFX_Boost_Standard.bnk"
+        }
+      ],
+      "remote_thumbnail": {
+        "filename": "Boost_Standard_T_SF.upk",
+        "remote_path": "Boost/_base_thumbnail/Boost_Standard_T_SF.upk"
+      }
+    }
+  ]
+}

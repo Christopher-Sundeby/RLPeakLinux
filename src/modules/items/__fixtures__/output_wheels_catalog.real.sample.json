@@ -1,0 +1,26 @@
+{
+  "schema": "rl_swap_output_wheels_catalog.minimal.v2",
+  "total_wheels": 3,
+  "base_files": ["WHEEL_Vortex_SF.upk"],
+  "base_thumbnail": "WHEEL_Vortex_T_SF.upk",
+  "base_thumbnail_path": "_base_thumbnail/WHEEL_Vortex_T_SF.upk",
+  "wheels": [
+    {
+      "wheel_folder": "wheel_alpha",
+      "ingame_wheel_name": "Alpha Wheel",
+      "item_type": "Wheels",
+      "output_upk_file": "WHEEL_Vortex_SF.upk"
+    },
+    {
+      "wheel_folder": "wheel_beta",
+      "ingame_wheel_name": "Beta Wheel",
+      "item_type": "Wheel",
+      "output_upk_file": "WHEEL_Vortex_SF.upk"
+    },
+    {
+      "wheel_folder": "wheel_gamma",
+      "ingame_wheel_name": "Gamma Wheel",
+      "output_upk_file": "WHEEL_Vortex_SF.upk"
+    }
+  ]
+}
