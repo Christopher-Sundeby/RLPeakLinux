@@ -15,6 +15,10 @@ import {
   validateRocketLeaguePath,
 } from "../../modules/items/rocketLeaguePathService";
 import { loadAppState, saveRocketLeaguePathSetting } from "../../modules/items/stateService";
+import {
+  getMetricsEnabledSetting,
+  setMetricsEnabled,
+} from "../../modules/metrics/metricsStateService";
 
 interface ActionStatus {
   ok: boolean;
@@ -48,15 +52,26 @@ export function SettingsPage() {
   const [isReloadingCatalogs, setIsReloadingCatalogs] = useState(false);
   const [resetAllStatus, setResetAllStatus] = useState<ActionStatus | null>(null);
   const [isResettingAll, setIsResettingAll] = useState(false);
+  const [metricsEnabled, setMetricsEnabledState] = useState(true);
+  const [isSavingMetricsSetting, setIsSavingMetricsSetting] = useState(false);
+  const [metricsStatus, setMetricsStatus] = useState<ActionStatus | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    loadAppState()
-      .then(async (appState) => {
+    Promise.allSettled([loadAppState(), getMetricsEnabledSetting()])
+      .then(async ([appStateResult, metricsResult]) => {
         if (!isMounted) {
           return;
         }
+
+        if (metricsResult.status === "fulfilled") {
+          setMetricsEnabledState(metricsResult.value);
+        } else {
+          setMetricsEnabledState(true);
+        }
+
+        const appState = appStateResult.status === "fulfilled" ? appStateResult.value : {};
         const savedPath = typeof appState.rocketLeaguePath === "string" ? appState.rocketLeaguePath : undefined;
         const resolvedPath = await resolvePreferredRocketLeaguePath(savedPath);
         if (!isMounted) {
@@ -92,6 +107,28 @@ export function SettingsPage() {
       isMounted = false;
     };
   }, []);
+
+  const handleMetricsEnabledToggle = async (enabled: boolean) => {
+    setMetricsStatus(null);
+    setMetricsEnabledState(enabled);
+    setIsSavingMetricsSetting(true);
+
+    try {
+      await setMetricsEnabled(enabled);
+      setMetricsStatus({
+        ok: true,
+        message: enabled ? "Anonymous usage metrics enabled." : "Anonymous usage metrics disabled.",
+      });
+    } catch {
+      setMetricsEnabledState(!enabled);
+      setMetricsStatus({
+        ok: false,
+        message: "Could not update anonymous usage metrics setting.",
+      });
+    } finally {
+      setIsSavingMetricsSetting(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -376,6 +413,37 @@ export function SettingsPage() {
             <p className="settings-empty-path-hint">{ROCKET_LEAGUE_PATH_SETUP_MESSAGE}</p>
           ) : validation && !validation.isValid ? (
             <p className="settings-empty-path-hint">{ROCKET_LEAGUE_PATH_SETUP_MESSAGE}</p>
+          ) : null}
+        </section>
+
+        <section className="settings-card">
+          <h2 className="catalog-heading">Privacy</h2>
+          <p className="settings-card-copy">
+            Anonymous usage metrics help improve RLPeak stability and plugin quality.
+          </p>
+
+          <label className="settings-label settings-toggle-row" htmlFor="metrics-enabled-toggle">
+            <span>Anonymous usage metrics</span>
+            <input
+              id="metrics-enabled-toggle"
+              type="checkbox"
+              checked={metricsEnabled}
+              disabled={isSavingMetricsSetting}
+              onChange={(event) => {
+                void handleMetricsEnabledToggle(event.currentTarget.checked);
+              }}
+            />
+          </label>
+
+          <p className="settings-card-copy">
+            Help improve RLPeak by sending anonymous usage events such as app start, app version, plugin usage and
+            error codes. No personal data, no Rocket League account data, and no local file paths.
+          </p>
+
+          {metricsStatus ? (
+            <p className={metricsStatus.ok ? "status-ok status-message" : "status-error status-message"}>
+              {metricsStatus.message}
+            </p>
           ) : null}
         </section>
       </div>

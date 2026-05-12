@@ -1,6 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { getLocalAppDataPaths } from "./pathService";
-import type { ActiveBoostEntry, AppState, ItemsUiSelectionState } from "./types";
+import type { ActiveBoostEntry, AppState, ItemsUiSelectionState, PluginsState, PluginStateEntry } from "./types";
 
 const LOCAL_STORAGE_STATE_KEY = "rlhub_app_state_json";
 
@@ -31,6 +31,69 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function sanitizePluginTutorialFlags(value: unknown): Record<string, boolean | undefined> | undefined {
+  if (!isObjectRecord(value)) {
+    return undefined;
+  }
+
+  const nextFlags: Record<string, boolean | undefined> = {};
+  for (const [flagKey, flagValue] of Object.entries(value)) {
+    if (typeof flagKey !== "string" || flagKey.trim().length === 0) {
+      continue;
+    }
+    if (typeof flagValue !== "boolean") {
+      continue;
+    }
+    nextFlags[flagKey] = flagValue;
+  }
+
+  if (Object.keys(nextFlags).length === 0) {
+    return undefined;
+  }
+
+  return nextFlags;
+}
+
+function sanitizePluginStateEntry(value: unknown): PluginStateEntry {
+  if (!isObjectRecord(value)) {
+    return {
+      installed: false,
+      enabled: false,
+    };
+  }
+
+  return {
+    installed: value.installed === true,
+    enabled: value.enabled === true,
+    name: typeof value.name === "string" ? value.name : undefined,
+    summary: typeof value.summary === "string" ? value.summary : undefined,
+    version: typeof value.version === "string" ? value.version : undefined,
+    type: typeof value.type === "string" ? value.type : undefined,
+    runtime: typeof value.runtime === "string" ? value.runtime : undefined,
+    overlay_settings: isObjectRecord(value.overlay_settings) ? value.overlay_settings : undefined,
+    tutorials: sanitizePluginTutorialFlags(value.tutorials),
+    installed_at: typeof value.installed_at === "string" ? value.installed_at : undefined,
+    updated_at: typeof value.updated_at === "string" ? value.updated_at : undefined,
+  };
+}
+
+function sanitizePluginsState(value: unknown): PluginsState {
+  if (!isObjectRecord(value)) {
+    return {};
+  }
+
+  const nextState: PluginsState = {};
+  for (const [pluginId, pluginValue] of Object.entries(value)) {
+    if (typeof pluginId !== "string" || pluginId.trim().length === 0) {
+      continue;
+    }
+
+    nextState[pluginId] = sanitizePluginStateEntry(pluginValue);
+  }
+
+  return nextState;
+}
+
 export function migrateAppState(state: AppState): AppState {
   const activeItemsRecord = isObjectRecord(state.activeItems) ? state.activeItems : {};
   const wheelRecord = isObjectRecord(activeItemsRecord.Wheel) ? activeItemsRecord.Wheel : {};
@@ -47,6 +110,7 @@ export function migrateAppState(state: AppState): AppState {
     isObjectRecord(uiSelectionsRecord.items) ? (uiSelectionsRecord.items as ItemsUiSelectionState) : undefined,
   );
   const uiStateRecord = isObjectRecord(state.uiState) ? state.uiState : {};
+  const pluginsState = sanitizePluginsState(state.plugins);
   const itemsGuideSeen = uiStateRecord.itemsGuideSeen === true;
 
   return {
@@ -68,6 +132,7 @@ export function migrateAppState(state: AppState): AppState {
         selectedBoostFolder: itemsSelectionRecord.selectedBoostFolder ?? null,
       },
     },
+    plugins: pluginsState,
     uiState: {
       ...uiStateRecord,
       itemsGuideSeen,

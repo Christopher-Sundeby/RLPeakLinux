@@ -4,6 +4,10 @@ use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 use sysinfo::{ProcessesToUpdate, System};
+use tauri::AppHandle;
+
+mod win_loss_overlay;
+mod workshop_map_loader;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -140,6 +144,26 @@ fn list_files_recursive(path: String) -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
+fn remove_path(path: String) -> Result<(), String> {
+    let target = Path::new(&path);
+    if !target.exists() {
+        return Ok(());
+    }
+
+    if target.is_file() {
+        fs::remove_file(target).map_err(|error| error.to_string())?;
+        return Ok(());
+    }
+
+    if target.is_dir() {
+        fs::remove_dir_all(target).map_err(|error| error.to_string())?;
+        return Ok(());
+    }
+
+    Err(format!("REMOVE_TARGET_INVALID: {}", path))
+}
+
+#[tauri::command]
 fn open_folder(path: String) -> Result<(), String> {
     let target = Path::new(&path);
     if !target.exists() {
@@ -172,12 +196,57 @@ fn is_allowed_website_url(url: &reqwest::Url) -> bool {
     matches!(url.host_str(), Some("rlpeak.com") | Some("www.rlpeak.com"))
 }
 
+fn is_safe_external_url(url: &reqwest::Url) -> bool {
+    if url.scheme() != "https" {
+        return false;
+    }
+
+    if url.host_str().is_none() {
+        return false;
+    }
+
+    if !url.username().is_empty() || url.password().is_some() {
+        return false;
+    }
+
+    match url.host_str() {
+        Some(host) => {
+            let lowered = host.to_ascii_lowercase();
+            lowered != "localhost" && lowered != "127.0.0.1" && lowered != "::1"
+        }
+        None => false,
+    }
+}
+
 #[tauri::command]
 fn open_website(url: String) -> Result<(), String> {
     let parsed_url =
         reqwest::Url::parse(&url).map_err(|error| format!("INVALID_WEBSITE_URL: {}", error))?;
     if !is_allowed_website_url(&parsed_url) {
         return Err(format!("WEBSITE_URL_NOT_ALLOWED: {}", url));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer.exe")
+            .arg(parsed_url.to_string())
+            .spawn()
+            .map_err(|error| format!("OPEN_FAILED: {}", error))?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err(format!("OPEN_UNSUPPORTED: {}", parsed_url))
+    }
+}
+
+#[tauri::command]
+fn open_external_url(url: String) -> Result<(), String> {
+    let parsed_url =
+        reqwest::Url::parse(&url).map_err(|error| format!("INVALID_EXTERNAL_URL: {}", error))?;
+    if !is_safe_external_url(&parsed_url) {
+        return Err(format!("EXTERNAL_URL_NOT_ALLOWED: {}", url));
     }
 
     #[cfg(target_os = "windows")]
@@ -303,6 +372,179 @@ fn is_rocket_league_running() -> Result<bool, String> {
     }
 }
 
+#[tauri::command]
+async fn start_win_loss_overlay_runtime(
+    app: AppHandle,
+    rocket_league_path: String,
+    app_data_root: String,
+) -> Result<win_loss_overlay::WinLossOverlayRuntimeState, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        win_loss_overlay::start_runtime(app, rocket_league_path, app_data_root)
+    })
+    .await
+    .map_err(|error| format!("OVERLAY_START_TASK_FAILED: {error}"))?
+}
+
+#[tauri::command]
+async fn stop_win_loss_overlay_runtime(
+    app: AppHandle,
+) -> Result<win_loss_overlay::WinLossOverlayRuntimeState, String> {
+    tauri::async_runtime::spawn_blocking(move || win_loss_overlay::stop_runtime(app))
+        .await
+        .map_err(|error| format!("OVERLAY_STOP_TASK_FAILED: {error}"))?
+}
+
+#[tauri::command]
+async fn force_stop_win_loss_overlay_runtime(
+    app: AppHandle,
+) -> Result<win_loss_overlay::WinLossOverlayRuntimeState, String> {
+    tauri::async_runtime::spawn_blocking(move || win_loss_overlay::force_stop_runtime(app))
+        .await
+        .map_err(|error| format!("OVERLAY_FORCE_STOP_TASK_FAILED: {error}"))?
+}
+
+#[tauri::command]
+async fn reset_win_loss_overlay_session(
+    app: AppHandle,
+) -> Result<win_loss_overlay::WinLossOverlayRuntimeState, String> {
+    tauri::async_runtime::spawn_blocking(move || win_loss_overlay::reset_runtime_session(app))
+        .await
+        .map_err(|error| format!("OVERLAY_RESET_TASK_FAILED: {error}"))?
+}
+
+#[tauri::command]
+fn get_win_loss_overlay_runtime_state() -> win_loss_overlay::WinLossOverlayRuntimeState {
+    win_loss_overlay::get_runtime_state()
+}
+
+#[tauri::command]
+async fn show_win_loss_overlay_window(
+    app: AppHandle,
+    x: Option<f64>,
+    y: Option<f64>,
+    width: Option<f64>,
+    height: Option<f64>,
+) -> Result<(), String> {
+    let layout = win_loss_overlay::OverlayWindowLayout {
+        x,
+        y,
+        width,
+        height,
+    };
+    tauri::async_runtime::spawn_blocking(move || win_loss_overlay::show_overlay_window(app, Some(layout)))
+        .await
+        .map_err(|error| format!("OVERLAY_SHOW_TASK_FAILED: {error}"))?
+}
+
+#[tauri::command]
+async fn hide_win_loss_overlay_window(app: AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || win_loss_overlay::hide_overlay_window(app))
+        .await
+        .map_err(|error| format!("OVERLAY_HIDE_TASK_FAILED: {error}"))?
+}
+
+#[tauri::command]
+async fn update_win_loss_overlay_window_layout(
+    app: AppHandle,
+    x: Option<f64>,
+    y: Option<f64>,
+    width: Option<f64>,
+    height: Option<f64>,
+) -> Result<(), String> {
+    let layout = win_loss_overlay::OverlayWindowLayout {
+        x,
+        y,
+        width,
+        height,
+    };
+    tauri::async_runtime::spawn_blocking(move || win_loss_overlay::update_overlay_window_layout(app, Some(layout)))
+        .await
+        .map_err(|error| format!("OVERLAY_UPDATE_LAYOUT_TASK_FAILED: {error}"))?
+}
+
+#[tauri::command]
+async fn get_workshop_maps_catalog(
+    app_data_root: String,
+) -> Result<workshop_map_loader::WorkshopMapsCatalogResponse, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        workshop_map_loader::get_workshop_maps_catalog(app_data_root)
+    })
+    .await
+    .map_err(|error| format!("WORKSHOP_GET_CATALOG_TASK_FAILED: {error}"))?
+}
+
+#[tauri::command]
+async fn refresh_workshop_maps_catalog(
+    app_data_root: String,
+) -> Result<workshop_map_loader::WorkshopMapsCatalogResponse, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        workshop_map_loader::refresh_workshop_maps_catalog(app_data_root)
+    })
+    .await
+    .map_err(|error| format!("WORKSHOP_REFRESH_CATALOG_TASK_FAILED: {error}"))?
+}
+
+#[tauri::command]
+async fn cache_workshop_map_assets(
+    app_data_root: String,
+    map_id: i64,
+) -> Result<workshop_map_loader::WorkshopMapAssetsCacheResponse, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        workshop_map_loader::cache_workshop_map_assets(app_data_root, map_id)
+    })
+    .await
+    .map_err(|error| format!("WORKSHOP_CACHE_MAP_ASSETS_TASK_FAILED: {error}"))?
+}
+
+#[tauri::command]
+async fn get_workshop_load_preflight(
+    app_data_root: String,
+    rocket_league_path: String,
+) -> Result<workshop_map_loader::WorkshopLoadPreflightResponse, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        workshop_map_loader::get_workshop_load_preflight(app_data_root, rocket_league_path)
+    })
+    .await
+    .map_err(|error| format!("WORKSHOP_LOAD_PREFLIGHT_TASK_FAILED: {error}"))?
+}
+
+#[tauri::command]
+async fn load_workshop_map(
+    app_data_root: String,
+    rocket_league_path: String,
+    map_id: i64,
+) -> Result<workshop_map_loader::WorkshopMapLoadResponse, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        workshop_map_loader::load_workshop_map(app_data_root, rocket_league_path, map_id)
+    })
+    .await
+    .map_err(|error| format!("WORKSHOP_LOAD_MAP_TASK_FAILED: {error}"))?
+}
+
+#[tauri::command]
+async fn restore_workshop_original_map(
+    app_data_root: String,
+    rocket_league_path: String,
+) -> Result<workshop_map_loader::WorkshopMapRestoreResponse, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        workshop_map_loader::restore_workshop_original_map(app_data_root, rocket_league_path)
+    })
+    .await
+    .map_err(|error| format!("WORKSHOP_RESTORE_MAP_TASK_FAILED: {error}"))?
+}
+
+#[tauri::command]
+async fn get_workshop_active_map_status(
+    app_data_root: String,
+    rocket_league_path: Option<String>,
+) -> Result<workshop_map_loader::WorkshopActiveMapStatusResponse, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        workshop_map_loader::get_workshop_active_map_status(app_data_root, rocket_league_path)
+    })
+    .await
+    .map_err(|error| format!("WORKSHOP_ACTIVE_MAP_STATUS_TASK_FAILED: {error}"))?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -316,10 +558,27 @@ pub fn run() {
             copy_file,
             list_files_in_directory,
             list_files_recursive,
+            remove_path,
             open_folder,
             open_website,
+            open_external_url,
             download_remote_file,
-            is_rocket_league_running
+            is_rocket_league_running,
+            start_win_loss_overlay_runtime,
+            stop_win_loss_overlay_runtime,
+            force_stop_win_loss_overlay_runtime,
+            reset_win_loss_overlay_session,
+            get_win_loss_overlay_runtime_state,
+            show_win_loss_overlay_window,
+            hide_win_loss_overlay_window,
+            update_win_loss_overlay_window_layout,
+            get_workshop_maps_catalog,
+            refresh_workshop_maps_catalog,
+            cache_workshop_map_assets,
+            get_workshop_load_preflight,
+            load_workshop_map,
+            restore_workshop_original_map,
+            get_workshop_active_map_status
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

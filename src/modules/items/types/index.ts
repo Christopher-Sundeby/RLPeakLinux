@@ -9,6 +9,8 @@ export type {
   AppState,
   ItemsUiSelectionState,
   LastActionState,
+  PluginsState,
+  PluginStateEntry,
   UiState,
   UiSelectionsState,
 } from "./appState";

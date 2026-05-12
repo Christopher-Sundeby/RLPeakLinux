@@ -1,6 +1,7 @@
 export interface AppState {
   rocketLeaguePath?: string;
   activeItems?: ActiveItemsState;
+  plugins?: PluginsState;
   uiSelections?: UiSelectionsState;
   uiState?: UiState;
   lastAction?: LastActionState;
@@ -46,6 +47,24 @@ export interface LastActionState {
   itemType?: string;
   displayName?: string;
   timestamp?: string;
+}
+
+export interface PluginsState {
+  [pluginId: string]: PluginStateEntry | undefined;
+}
+
+export interface PluginStateEntry {
+  installed?: boolean;
+  enabled?: boolean;
+  name?: string;
+  summary?: string;
+  version?: string;
+  type?: string;
+  runtime?: string;
+  overlay_settings?: Record<string, unknown>;
+  tutorials?: Record<string, boolean | undefined>;
+  installed_at?: string;
+  updated_at?: string;
 }
 
 export interface UiSelectionsState {

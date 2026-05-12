@@ -8,7 +8,17 @@ import {
 } from "./modules/app/versionGateService";
 import { checkStartupPathSetup } from "./modules/app/startupPathSetupService";
 import { saveRocketLeaguePathSetting } from "./modules/items/stateService";
+import {
+  createPluginRuntimeBootstrapRunner,
+  shutdownActivePluginRuntimes,
+} from "./modules/plugins/pluginRuntimeLifecycleService";
+import { createPluginRuntimeCloseFlowController } from "./modules/plugins/pluginRuntimeCloseFlowService";
 import { openRLPeakWebsite } from "./modules/app/websiteActionService";
+import {
+  initializeMetrics,
+  trackAppStart,
+  trackDailyActive,
+} from "./modules/metrics/metricsService";
 import { shouldRenderMainRoutes } from "./ui/bootGateState";
 import {
   readWindowMaximizedState,
@@ -17,20 +27,38 @@ import {
 import { AboutPage } from "./ui/pages/AboutPage";
 import { DashboardPage } from "./ui/pages/DashboardPage";
 import { ItemsPage } from "./ui/pages/ItemsPage";
+import { PluginDetailPage } from "./ui/pages/PluginDetailPage";
 import { PluginsPage } from "./ui/pages/PluginsPage";
 import { SettingsPage } from "./ui/pages/SettingsPage";
+import { WinLossOverlayPage } from "./ui/pages/WinLossOverlayPage";
 import "./App.css";
 
 type BootGateState = { status: "boot-loading" } | VersionGateCheckResult;
+const appPluginRuntimeBootstrapRunner = createPluginRuntimeBootstrapRunner();
+
+function isWinLossOverlayRoute(pathname: string, hash?: string): boolean {
+  if (pathname === "/overlay/win-loss") {
+    return true;
+  }
+
+  return typeof hash === "string" && hash.startsWith("#/overlay/win-loss");
+}
 
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  const isOverlayWindowRoute = isWinLossOverlayRoute(
+    location.pathname,
+    typeof window !== "undefined" ? window.location.hash : "",
+  );
   const [isWindowMaximized, setIsWindowMaximized] = useState(false);
   const [windowActionStatus, setWindowActionStatus] = useState<string | null>(null);
   const [bootGateState, setBootGateState] = useState<BootGateState>({ status: "boot-loading" });
   const [bootGateActionStatus, setBootGateActionStatus] = useState<string | null>(null);
   const [hasCheckedPathSetupAfterBoot, setHasCheckedPathSetupAfterBoot] = useState(false);
+  const [startupRocketLeaguePath, setStartupRocketLeaguePath] = useState<string | null>(null);
+  const [hasAttemptedPluginRuntimeBootstrap, setHasAttemptedPluginRuntimeBootstrap] = useState(false);
+  const [pluginRuntimeBootstrapStatus, setPluginRuntimeBootstrapStatus] = useState<string | null>(null);
 
   const syncMaximizedState = useCallback(async (): Promise<boolean> => {
     const result = await readWindowMaximizedState();
@@ -57,6 +85,10 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (isOverlayWindowRoute) {
+      return undefined;
+    }
+
     let unlistenResize: (() => void) | null = null;
     let isMounted = true;
 
@@ -86,9 +118,25 @@ function App() {
         unlistenResize();
       }
     };
-  }, [syncMaximizedState]);
+  }, [isOverlayWindowRoute, syncMaximizedState]);
 
   useEffect(() => {
+    if (isOverlayWindowRoute) {
+      return undefined;
+    }
+
+    void initializeMetrics();
+    void trackAppStart();
+    void trackDailyActive();
+
+    return undefined;
+  }, [isOverlayWindowRoute]);
+
+  useEffect(() => {
+    if (isOverlayWindowRoute) {
+      return undefined;
+    }
+
     let isMounted = true;
 
     void (async () => {
@@ -106,11 +154,18 @@ function App() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isOverlayWindowRoute]);
 
   useEffect(() => {
+    if (isOverlayWindowRoute) {
+      return undefined;
+    }
+
     if (bootGateState.status !== "boot-ok") {
       setHasCheckedPathSetupAfterBoot(false);
+      setHasAttemptedPluginRuntimeBootstrap(false);
+      setStartupRocketLeaguePath(null);
+      setPluginRuntimeBootstrapStatus(null);
       return;
     }
 
@@ -129,6 +184,7 @@ function App() {
         }
 
         if (setupResult.status === "needs-setup") {
+          setStartupRocketLeaguePath(null);
           if (location.pathname !== "/settings") {
             navigate("/settings", { replace: true });
           }
@@ -136,6 +192,7 @@ function App() {
           return;
         }
 
+        setStartupRocketLeaguePath(setupResult.rocketLeaguePath);
         if (setupResult.shouldPersist) {
           try {
             await saveRocketLeaguePathSetting(setupResult.rocketLeaguePath);
@@ -151,6 +208,7 @@ function App() {
         }
 
         console.error(`Startup Rocket League path check failed: ${String(error)}`);
+        setStartupRocketLeaguePath(null);
         if (location.pathname !== "/settings") {
           navigate("/settings", { replace: true });
         }
@@ -161,7 +219,112 @@ function App() {
     return () => {
       isMounted = false;
     };
-  }, [bootGateState.status, hasCheckedPathSetupAfterBoot, location.pathname, navigate]);
+  }, [bootGateState.status, hasCheckedPathSetupAfterBoot, isOverlayWindowRoute, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (isOverlayWindowRoute) {
+      return undefined;
+    }
+
+    if (bootGateState.status !== "boot-ok" || !hasCheckedPathSetupAfterBoot) {
+      return undefined;
+    }
+
+    if (hasAttemptedPluginRuntimeBootstrap) {
+      return undefined;
+    }
+
+    let isMounted = true;
+    setHasAttemptedPluginRuntimeBootstrap(true);
+
+    void (async () => {
+      const result = await appPluginRuntimeBootstrapRunner.run({
+        rocketLeaguePath: startupRocketLeaguePath,
+      });
+      if (!isMounted) {
+        return;
+      }
+
+      if (result.failed > 0) {
+        const firstFailure = result.details.find((entry) => entry.status === "failed");
+        const message = firstFailure
+          ? `Plugin runtime auto-start failed: ${firstFailure.message}`
+          : "Plugin runtime auto-start failed.";
+        setPluginRuntimeBootstrapStatus(message);
+        if (firstFailure?.details) {
+          console.error(`${message} (${firstFailure.details})`);
+        } else {
+          console.error(message);
+        }
+        return;
+      }
+
+      setPluginRuntimeBootstrapStatus(null);
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    bootGateState.status,
+    hasAttemptedPluginRuntimeBootstrap,
+    hasCheckedPathSetupAfterBoot,
+    isOverlayWindowRoute,
+    startupRocketLeaguePath,
+  ]);
+
+  useEffect(() => {
+    if (isOverlayWindowRoute) {
+      return undefined;
+    }
+
+    let isMounted = true;
+    let unlistenCloseRequested: (() => void) | null = null;
+
+    void (async () => {
+      try {
+        const appWindow = getCurrentWindow();
+        const closeFlowController = createPluginRuntimeCloseFlowController({
+          runShutdownCleanup: shutdownActivePluginRuntimes,
+          finalizeClose: async () => {
+            await appWindow.destroy();
+          },
+          reportStatus: (message: string) => {
+            if (!isMounted) {
+              return;
+            }
+            setWindowActionStatus(message);
+          },
+          reportError: (message: string) => {
+            console.error(message);
+          },
+        });
+        const nextUnlistenCloseRequested = await appWindow.onCloseRequested(
+          (event) => closeFlowController.handleCloseRequested(event),
+        );
+        if (!isMounted) {
+          nextUnlistenCloseRequested();
+          return;
+        }
+        unlistenCloseRequested = nextUnlistenCloseRequested;
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        const message = `Window close hook failed: ${String(error)}`;
+        setWindowActionStatus(message);
+        console.error(message);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+      if (unlistenCloseRequested) {
+        unlistenCloseRequested();
+      }
+    };
+  }, [isOverlayWindowRoute]);
 
   const handleMinimize = useCallback(async () => {
     const result = await runWindowAction("minimize", async (windowRef) => {
@@ -240,6 +403,10 @@ function App() {
   const bootWebsiteUrl = bootGateState.status === "boot-outdated" || bootGateState.status === "boot-error"
     ? bootGateState.websiteUrl
     : undefined;
+
+  if (isOverlayWindowRoute) {
+    return <WinLossOverlayPage />;
+  }
 
   return (
     <div className="app-shell">
@@ -342,6 +509,7 @@ function App() {
 
       <main className={`page-content${isMainRoutesEnabled ? "" : " page-content-boot"}`}>
         {windowActionStatus ? <p className="window-action-status">{windowActionStatus}</p> : null}
+        {pluginRuntimeBootstrapStatus ? <p className="window-action-status">{pluginRuntimeBootstrapStatus}</p> : null}
 
         {isMainRoutesEnabled ? (
           <Routes>
@@ -349,6 +517,7 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/items" element={<ItemsPage />} />
             <Route path="/plugins" element={<PluginsPage />} />
+            <Route path="/plugins/:pluginId" element={<PluginDetailPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/about" element={<AboutPage />} />
           </Routes>

@@ -21,6 +21,7 @@ export interface LocalAppDataPaths {
   itemsWheelDir: string;
   itemsBoostDir: string;
   cacheRoot: string;
+  cachePluginsRoot: string;
   cacheItemsRoot: string;
   cacheItemsSkinDir: string;
   cacheItemsWheelDir: string;
@@ -208,6 +209,7 @@ export async function getLocalAppDataPaths(): Promise<LocalAppDataPaths> {
   const backupsRoot = await joinPath(appDataRoot, "Backups");
   const stateDir = await joinPath(appDataRoot, "state");
   const cacheRoot = await joinPath(appDataRoot, "cache");
+  const cachePluginsRoot = await joinPath(cacheRoot, "Plugins");
   const cacheItemsRoot = await joinPath(cacheRoot, "ItemsFiles");
 
   return {
@@ -222,6 +224,7 @@ export async function getLocalAppDataPaths(): Promise<LocalAppDataPaths> {
     itemsWheelDir: await joinPath(itemsRoot, "Wheel"),
     itemsBoostDir: await joinPath(itemsRoot, "Boost"),
     cacheRoot,
+    cachePluginsRoot,
     cacheItemsRoot,
     cacheItemsSkinDir: await joinPath(cacheItemsRoot, "Skin"),
     cacheItemsWheelDir: await joinPath(cacheItemsRoot, "Wheel"),

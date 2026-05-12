@@ -15,6 +15,7 @@ import {
 } from "./remoteApiService";
 import { getCookedPcConsolePath } from "./rocketLeaguePathService";
 import { loadAppState, saveAppState } from "./stateService";
+import { mapItemApplyFailureToMetricsCode, trackEvent } from "../metrics/metricsService";
 import type { AppState, BoostCatalogItem, SkinCatalogItem, WheelCatalogItem } from "./types";
 
 export interface ApplySkinInput {
@@ -466,7 +467,7 @@ async function persistAppliedBoostState(input: ApplyBoostInput, thumbnailFile?: 
   await saveAppState(nextState);
 }
 
-export async function applySkin(input: ApplySkinInput): Promise<ApplySkinResult> {
+async function applySkinInternal(input: ApplySkinInput): Promise<ApplySkinResult> {
   const rocketLeaguePath = input.rocketLeaguePath.trim();
   const normalizedCarKey = input.carKey.trim() || input.skin.car_folder;
 
@@ -633,7 +634,7 @@ export async function applySkin(input: ApplySkinInput): Promise<ApplySkinResult>
   }
 }
 
-export async function applyWheel(input: ApplyWheelInput): Promise<ApplyWheelResult> {
+async function applyWheelInternal(input: ApplyWheelInput): Promise<ApplyWheelResult> {
   const rocketLeaguePath = input.rocketLeaguePath.trim();
   const wheelFolder = input.wheel.wheel_folder.trim();
   const outputUpkFile = input.wheel.output_upk_file.trim();
@@ -796,7 +797,7 @@ export async function applyWheel(input: ApplyWheelInput): Promise<ApplyWheelResu
   }
 }
 
-export async function applyBoost(input: ApplyBoostInput): Promise<ApplyBoostResult> {
+async function applyBoostInternal(input: ApplyBoostInput): Promise<ApplyBoostResult> {
   const rocketLeaguePath = input.rocketLeaguePath.trim();
   const boostFolder = input.boost.boost_folder.trim();
   const outputFiles = Array.from(new Set(input.boost.output_files.map((entry) => entry.trim()).filter(Boolean)));
@@ -971,4 +972,47 @@ export async function applyBoost(input: ApplyBoostInput): Promise<ApplyBoostResu
       details,
     };
   }
+}
+
+function trackItemApplyMetrics(result: ApplySuccessResult | ApplyErrorResult): void {
+  if (result.ok) {
+    try {
+      void trackEvent("item_apply_success");
+    } catch {
+      // Metrics failures must never block apply actions.
+    }
+    return;
+  }
+
+  const errorCode = mapItemApplyFailureToMetricsCode({
+    code: result.code,
+    message: result.message,
+    details: result.details,
+  });
+
+  try {
+    void trackEvent("item_apply_failed", {
+      errorCode,
+    });
+  } catch {
+    // Metrics failures must never block apply actions.
+  }
+}
+
+export async function applySkin(input: ApplySkinInput): Promise<ApplySkinResult> {
+  const result = await applySkinInternal(input);
+  trackItemApplyMetrics(result);
+  return result;
+}
+
+export async function applyWheel(input: ApplyWheelInput): Promise<ApplyWheelResult> {
+  const result = await applyWheelInternal(input);
+  trackItemApplyMetrics(result);
+  return result;
+}
+
+export async function applyBoost(input: ApplyBoostInput): Promise<ApplyBoostResult> {
+  const result = await applyBoostInternal(input);
+  trackItemApplyMetrics(result);
+  return result;
 }

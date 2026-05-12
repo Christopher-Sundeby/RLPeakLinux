@@ -53,6 +53,7 @@ describe("restoreService.resetSelectedCar", () => {
       itemsWheelDir: "C:/RLHub/AppData/ItemsFiles/Wheel",
       itemsBoostDir: "C:/RLHub/AppData/ItemsFiles/Boost",
       cacheRoot: "C:/RLHub/AppData/cache",
+      cachePluginsRoot: "C:/RLHub/AppData/cache/Plugins",
       cacheItemsRoot: "C:/RLHub/AppData/cache/ItemsFiles",
       cacheItemsSkinDir: "C:/RLHub/AppData/cache/ItemsFiles/Skin",
       cacheItemsWheelDir: "C:/RLHub/AppData/cache/ItemsFiles/Wheel",
@@ -209,6 +210,7 @@ describe("restoreService.resetWheels", () => {
       itemsWheelDir: "C:/RLHub/AppData/ItemsFiles/Wheel",
       itemsBoostDir: "C:/RLHub/AppData/ItemsFiles/Boost",
       cacheRoot: "C:/RLHub/AppData/cache",
+      cachePluginsRoot: "C:/RLHub/AppData/cache/Plugins",
       cacheItemsRoot: "C:/RLHub/AppData/cache/ItemsFiles",
       cacheItemsSkinDir: "C:/RLHub/AppData/cache/ItemsFiles/Skin",
       cacheItemsWheelDir: "C:/RLHub/AppData/cache/ItemsFiles/Wheel",
@@ -355,6 +357,7 @@ describe("restoreService.resetBoost", () => {
       itemsWheelDir: "C:/RLHub/AppData/ItemsFiles/Wheel",
       itemsBoostDir: "C:/RLHub/AppData/ItemsFiles/Boost",
       cacheRoot: "C:/RLHub/AppData/cache",
+      cachePluginsRoot: "C:/RLHub/AppData/cache/Plugins",
       cacheItemsRoot: "C:/RLHub/AppData/cache/ItemsFiles",
       cacheItemsSkinDir: "C:/RLHub/AppData/cache/ItemsFiles/Skin",
       cacheItemsWheelDir: "C:/RLHub/AppData/cache/ItemsFiles/Wheel",
@@ -478,6 +481,7 @@ describe("restoreService.resetAll", () => {
       itemsWheelDir: "C:/RLHub/AppData/ItemsFiles/Wheel",
       itemsBoostDir: "C:/RLHub/AppData/ItemsFiles/Boost",
       cacheRoot: "C:/RLHub/AppData/cache",
+      cachePluginsRoot: "C:/RLHub/AppData/cache/Plugins",
       cacheItemsRoot: "C:/RLHub/AppData/cache/ItemsFiles",
       cacheItemsSkinDir: "C:/RLHub/AppData/cache/ItemsFiles/Skin",
       cacheItemsWheelDir: "C:/RLHub/AppData/cache/ItemsFiles/Wheel",
@@ -654,3 +658,6 @@ describe("restoreService.resetAll", () => {
     expect(mocked.saveAppState).not.toHaveBeenCalled();
   });
 });
+
+
+

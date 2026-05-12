@@ -31,7 +31,8 @@ function createPaths(): LocalAppDataPaths {
     itemsWheelDir: "C:/repo/AppData/ItemsFiles/Wheel",
     itemsBoostDir: "C:/repo/AppData/ItemsFiles/Boost",
     cacheRoot: "C:/repo/AppData/cache",
-    cacheItemsRoot: "C:/repo/AppData/cache/ItemsFiles",
+      cachePluginsRoot: "C:/repo/AppData/cache/Plugins",
+      cacheItemsRoot: "C:/repo/AppData/cache/ItemsFiles",
     cacheItemsSkinDir: "C:/repo/AppData/cache/ItemsFiles/Skin",
     cacheItemsWheelDir: "C:/repo/AppData/cache/ItemsFiles/Wheel",
     cacheItemsBoostDir: "C:/repo/AppData/cache/ItemsFiles/Boost",
@@ -188,3 +189,6 @@ describe("remoteFileCacheService", () => {
     expect(result.message).toBe("RLPeak servers are unavailable. Please try again later.");
   });
 });
+
+
+

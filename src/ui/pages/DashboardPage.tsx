@@ -1,5 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  getBuiltInFallbackDashboardNewsItems,
+  loadDashboardNews,
+  type DashboardNewsItem,
+  type DashboardNewsType,
+} from "../../modules/app/dashboardNewsService";
 import { ensureRocketLeaguePathForActions } from "../../modules/items/rocketLeaguePathService";
 import { readRocketLeagueProcessStatus, type RocketLeagueProcessStatus } from "../../modules/items/rocketLeagueProcessService";
 import { resetAll } from "../../modules/items/restoreService";
@@ -9,6 +15,7 @@ import {
   readActiveLoadoutSummary,
   type ActiveLoadoutSummary,
 } from "./dashboardPageSelectors";
+import { openPluginExternalLink } from "./pluginExternalLinkService";
 
 interface DashboardQuickActionStatus {
   ok: boolean;
@@ -19,6 +26,11 @@ interface DashboardStatusSnapshot {
   rocketLeaguePath: string;
   processStatus: RocketLeagueProcessStatus;
   activeLoadout: ActiveLoadoutSummary;
+}
+
+interface DashboardNewsStatus {
+  ok: boolean;
+  message: string;
 }
 
 async function readDashboardSnapshot(): Promise<DashboardStatusSnapshot> {
@@ -57,6 +69,10 @@ export function DashboardPage() {
   const [status, setStatus] = useState<DashboardStatusSnapshot | null>(null);
   const [quickActionStatus, setQuickActionStatus] = useState<DashboardQuickActionStatus | null>(null);
   const [isResettingAll, setIsResettingAll] = useState(false);
+  const [newsItems, setNewsItems] = useState<DashboardNewsItem[]>(() => getBuiltInFallbackDashboardNewsItems());
+  const [isNewsLoading, setIsNewsLoading] = useState(false);
+  const [newsStatus, setNewsStatus] = useState<DashboardNewsStatus | null>(null);
+  const [newsSourceLabel, setNewsSourceLabel] = useState("Fallback");
 
   useEffect(() => {
     let isMounted = true;
@@ -94,6 +110,77 @@ export function DashboardPage() {
 
     return getUserFacingRocketLeagueStatus(status.processStatus);
   }, [status]);
+
+  const loadNews = useCallback(async () => {
+    setIsNewsLoading(true);
+    setNewsStatus(null);
+    try {
+      const result = await loadDashboardNews();
+      setNewsItems(result.items);
+      if (result.source === "remote") {
+        setNewsSourceLabel("Remote");
+      } else if (result.source === "cache") {
+        setNewsSourceLabel("Cache");
+        setNewsStatus({
+          ok: true,
+          message: "Using cached dashboard news.",
+        });
+      } else {
+        setNewsSourceLabel("Fallback");
+        setNewsStatus({
+          ok: false,
+          message: "Using built-in dashboard news while remote news is unavailable.",
+        });
+      }
+    } catch {
+      setNewsItems(getBuiltInFallbackDashboardNewsItems());
+      setNewsSourceLabel("Fallback");
+      setNewsStatus({
+        ok: false,
+        message: "Using built-in dashboard news while remote news is unavailable.",
+      });
+    } finally {
+      setIsNewsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadNews();
+  }, [loadNews]);
+
+  const handleDashboardNewsCta = async (item: DashboardNewsItem) => {
+    if (!item.cta) {
+      return;
+    }
+
+    if (item.cta.route) {
+      navigate(item.cta.route);
+      return;
+    }
+
+    if (!item.cta.url) {
+      return;
+    }
+
+    const result = await openPluginExternalLink(item.cta.url);
+    setNewsStatus({
+      ok: result.ok,
+      message: result.message,
+    });
+  };
+
+  const getTypeBadgeLabel = (type: DashboardNewsType): string => {
+    if (type === "update") {
+      return "Update";
+    }
+    if (type === "warning") {
+      return "Warning";
+    }
+    if (type === "info") {
+      return "Info";
+    }
+    return "News";
+  };
 
   const handleResetAll = async () => {
     const pathGuard = await ensureRocketLeaguePathForActions(status?.rocketLeaguePath ?? "");
@@ -241,21 +328,55 @@ export function DashboardPage() {
       <section className="dashboard-panel dashboard-news-panel">
         <div className="dashboard-panel-header">
           <h2 className="catalog-heading">News, Info, Updates</h2>
+          <button
+            type="button"
+            className="settings-btn-secondary dashboard-news-refresh-btn"
+            onClick={() => {
+              void loadNews();
+            }}
+            disabled={isNewsLoading}
+          >
+            {isNewsLoading ? "Refreshing..." : "Refresh"}
+          </button>
         </div>
         <div className="dashboard-panel-body">
+          <p className="dashboard-news-meta">{`Source: ${newsSourceLabel}`}</p>
+          {newsStatus ? (
+            <p className={newsStatus.ok ? "status-ok status-message" : "status-error status-message"}>
+              {newsStatus.message}
+            </p>
+          ) : null}
           <div className="dashboard-news-list">
-            <p className="dashboard-news-item">
-              <span className="dashboard-news-tag">RLPeak V1</span>
-              Decals, Wheels, and Boosts are available.
-            </p>
-            <p className="dashboard-news-item">
-              <span className="dashboard-news-tag">Instant Apply</span>
-              Select an item, press Apply, and equip the highlighted base item in Rocket League.
-            </p>
-            <p className="dashboard-news-item">
-              <span className="dashboard-news-tag">Coming Soon</span>
-              Plugins and more customization tools are planned for future updates.
-            </p>
+            {newsItems.length === 0 ? (
+              <p className="dashboard-news-item">No dashboard updates are available right now.</p>
+            ) : (
+              newsItems.map((item) => (
+                <article key={item.id} className="dashboard-news-item">
+                  <div className="dashboard-news-item-top">
+                    <span className={`dashboard-news-tag is-${item.type}`}>{item.badge ?? getTypeBadgeLabel(item.type)}</span>
+                    {item.date ? (
+                      <time className="dashboard-news-date" dateTime={item.date}>{item.date}</time>
+                    ) : null}
+                  </div>
+                  <h3 className="dashboard-news-title">{item.title}</h3>
+                  <p className="dashboard-news-summary">{item.summary}</p>
+                  {item.body ? <p className="dashboard-news-body">{item.body}</p> : null}
+                  {item.cta ? (
+                    <div className="dashboard-news-actions">
+                      <button
+                        type="button"
+                        className="settings-btn-secondary"
+                        onClick={() => {
+                          void handleDashboardNewsCta(item);
+                        }}
+                      >
+                        {item.cta.label}
+                      </button>
+                    </div>
+                  ) : null}
+                </article>
+              ))
+            )}
           </div>
         </div>
       </section>

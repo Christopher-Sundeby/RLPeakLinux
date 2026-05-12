@@ -153,6 +153,7 @@ describe("catalogService", () => {
       itemsWheelDir: "C:/RLHub/AppData/ItemsFiles/Wheel",
       itemsBoostDir: "C:/RLHub/AppData/ItemsFiles/Boost",
       cacheRoot: "C:/RLHub/AppData/cache",
+      cachePluginsRoot: "C:/RLHub/AppData/cache/Plugins",
       cacheItemsRoot: "C:/RLHub/AppData/cache/ItemsFiles",
       cacheItemsSkinDir: "C:/RLHub/AppData/cache/ItemsFiles/Skin",
       cacheItemsWheelDir: "C:/RLHub/AppData/cache/ItemsFiles/Wheel",
@@ -338,3 +339,6 @@ describe("catalogService", () => {
     expect(result.data.total_wheels).toBe(realWheelCatalog.total_wheels);
   });
 });
+
+
+

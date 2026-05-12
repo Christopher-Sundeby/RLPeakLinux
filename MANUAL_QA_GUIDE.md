@@ -25,6 +25,14 @@ This guide validates RLPeak V1 with the production remote API and local runtime 
 npm install
 ```
 
+### Build-machine prerequisites (developer-only)
+
+- Default tracker.gg browser-impersonation build path (`mmr-wreq`) requires:
+  - NASM (`nasm.exe`)
+  - LLVM/Clang (`libclang.dll` available via `LIBCLANG_PATH` or system install)
+- These are compile-time requirements only and are **not** required on end-user machines.
+- End users running packaged RLPeak should only install RLPeak itself.
+
 ## 2. Launch RLPeak (Dev)
 
 ```bash
@@ -55,15 +63,15 @@ Expected:
    - `Retry` re-runs check
    - `Open RLPeak website` opens `https://rlpeak.com/`.
 
-## 2.1 Version 1.0.0 release checks
+## 2.1 Version 1.1.0 release checks
 
-1. Confirm local app metadata resolves to version `1.0.0`:
+1. Confirm local app metadata resolves to version `1.1.0`:
    - `package.json`
    - `src-tauri/tauri.conf.json`
    - `src-tauri/Cargo.toml`
 2. Confirm app unlocks only when the API returns:
-   - `required_version: "1.0.0"`
-3. Confirm app is blocked when API `required_version` differs from `1.0.0`.
+   - `required_version: "1.1.0"`
+3. Confirm app is blocked when API `required_version` differs from `1.1.0`.
 
 ## 2.2 Validate RLPeak shell interactions
 
@@ -96,6 +104,16 @@ Expected:
    - `Running`
    - `Not running`
    - `Status unavailable`
+4. Confirm `News, Info, Updates` renders as data cards (title/summary/type badge/date/optional CTA).
+5. While online, confirm Dashboard news can refresh from:
+   - `https://api.rlpeak.com/v1/news/dashboard.json`
+6. Confirm `Refresh` in Dashboard news section updates content without blocking the page.
+7. Disconnect internet and refresh Dashboard news:
+   - app should continue showing cache/fallback news
+   - Dashboard must not crash or become unusable.
+8. Confirm safe CTA handling:
+   - internal route CTA (example `/plugins`) navigates in-app
+   - external URL CTA opens only safe `https` links via system browser.
 
 ## 4. Configure Rocket League path
 
@@ -308,7 +326,273 @@ If boost catalog is missing or invalid:
 ## 12. Verify Plugins and About pages
 
 1. Open `Plugins`.
-2. Confirm a polished `Coming Soon` message with supporting product-style copy.
+2. Confirm plugin cards load from remote catalog.
+3. Confirm each card shows:
+   - media banner/thumbnail
+   - icon
+   - title
+   - short summary (compact)
+   - version/status pills
+   - install state
+   - enabled state only for plugins that support runtime toggling
+   - runtime status pill
+   - `Manage` button.
+4. Confirm catalog cards stay compact:
+   - cards should not contain full theme controls (`Scale`, `Opacity`, `Save overlay settings`, etc.).
+4. Click `Install` on `Win/Loss Overlay`.
+5. Confirm only safe assets are cached under:
+   - `AppData/cache/Plugins/win_loss_overlay/`
+6. Click `Enable` from card or from Manage page.
+6.1 If Rocket League is already running, verify Stats API listener first in PowerShell:
+   - `netstat -ano | findstr :49123`
+   - expected: listener on `0.0.0.0:49123` (or configured port).
+6.2 Confirm runtime log captures explicit connection attempt details:
+   - `address_attempted=127.0.0.1:<port>`
+   - `transport_attempted=websocket`
+   - websocket response marker OR `fallback_to_raw_tcp_triggered`
+   - raw tcp connect success marker
+7. Confirm built-in runtime starts and overlay window opens as a separate always-on-top transparent window.
+7.1 Confirm the live overlay has no opaque container/card behind the panel:
+   - overlay window background should be transparent,
+   - only the RocketStats Circle panel image + text rows should be visible.
+7.2 Confirm no OS-style frame edge around overlay window:
+   - no titlebar,
+   - no visible white/gray border,
+   - no window shadow frame that looks separate from the Circle asset.
+7.1 Confirm overlay never appears as a blank white rectangle; it should immediately show:
+   - `W 0`
+   - `L 0`
+   - `Streak 0`
+   - `Waiting for Rocket League`
+8. Confirm runtime status pill progresses through user-friendly states (`Waiting for Rocket League`, `Restart Rocket League`, `Connected`, `In Match`, `Error`, `Stopped`).
+9. Confirm overlay shows live `Wins`, `Losses`, `Streak`, and `MMR` values.
+10. Click `Manage`.
+11. Confirm plugin detail page opens at `/plugins/win_loss_overlay`.
+12. Confirm detail page shows:
+   - two main regions on wide desktop:
+     - left action/settings panel
+     - right presentation/product panel
+   - left panel is narrower and remains visible while scrolling if sticky is active
+   - on narrow width, the two regions stack vertically and remain usable
+   - product-style hero (banner/icon/title/summary/version/status/install/enabled)
+   - no dedicated screenshots section
+   - long description/credits/links section
+   - runtime control block only when installed
+   - overlay settings block only when installed
+12.1 While plugin is not installed, confirm:
+   - left panel shows install-focused CTA/guidance
+   - runtime controls and overlay settings are hidden
+   - right presentation panel still shows full product content.
+12.2 After install, confirm:
+   - left panel now shows runtime controls and overlay settings
+   - right panel presentation content remains visible.
+12.3 Validate RocketStats borderless setup tutorial:
+   - on first visit to installed RocketStats detail page, confirm modal auto-opens:
+     - title `Overlay setup guide`
+     - copy mentioning `Display Mode` and `Borderless`
+     - image from `/plugin-assets/rocketstats/display_mode_rl.png`
+   - click `Got it` and confirm the modal closes.
+   - navigate away and return to RocketStats detail page; confirm it does not auto-open again.
+   - click `Overlay setup guide` button in runtime controls; confirm modal opens again manually.
+   - click tutorial image and confirm lightbox opens with enlarged image + caption.
+   - temporarily remove/rename the image file and confirm modal still renders safely with placeholder/text.
+13. Click `Reset session` and confirm counters reset to zero.
+14. Click `Hide overlay` then `Show overlay` and confirm the same overlay window is controlled correctly.
+14.1 Validate overlay theme controls on the plugin detail page:
+   - `Theme` selector shows:
+     - `RocketStats Circle`
+     - `RocketStats JSTKISS`
+     - `RocketStats NativeTheme`
+     - `Minimalist`
+   - `Scale` slider is editable (`50%..150%`, step `5%`).
+   - `Scale` shows current percent text (for default settings: `100%`).
+   - `Opacity` slider is editable (`30%..100%`, step `5%`) and synchronized with numeric opacity input.
+   - `X position` slider is editable (`0..3840`, step `10`) and synchronized with `X` numeric input.
+   - `Y position` slider is editable (`0..2160`, step `10`) and synchronized with `Y` numeric input.
+   - MMR debug fields are not shown in normal settings:
+     - no `MMR status`
+     - no `MMR delta`
+     - no `MMR failure reason`
+     - no `MMR HTTP client`
+   - there is no `Show MMR` toggle (MMR is always rendered for Circle).
+14.2 Click `Save overlay settings` and confirm:
+   - success status is shown,
+   - overlay updates live when open (position/size/opacity/theme text visibility),
+   - changing scale updates both preview size and live overlay window size,
+   - settings persist after RLPeak restart.
+14.2.1 Validate live overlay click-through behavior:
+   - place overlay on top of Rocket League (or another clickable app)
+   - click on the overlay area
+   - confirm the click is received by the app behind the overlay
+   - confirm overlay remains visible and always-on-top
+   - confirm Manage page `Hide overlay` / `Show overlay` / `Disable` still works.
+14.3 Click `Reset overlay settings` and confirm:
+   - settings return to defaults (`theme_id=rocketstats_circle`, `scale=1`, `opacity=0.92`),
+   - overlay reflects reset values.
+14.3.1 Compare live text placement against Circle reference:
+   - `MMR` near `left=257.1, top=81.8`
+   - `Streak` near `left=276.5, top=131`
+   - `Wins` near `left=273.1, top=172.8`
+   - `Losses` near `left=273.1, top=208.8`
+   (positions should visually match Circle panel guides).
+14.3.2 Validate MMR state semantics:
+   - during startup/baseline fetch: `...`
+   - ready before first sync: `0`
+   - syncing after match end: keeps last stable delta or `...`
+   - synced: signed delta (`+N`, `-N`, `0`, never `+0`)
+   - failed/unavailable: `N/A` (or last stable delta if already known).
+14.3.3 Validate JSTKISS-specific rendering:
+   - switch `Theme` to `RocketStats JSTKISS`
+   - confirm overlay uses `/overlay-themes/rocketstats-JSTKISS/background.png`
+   - confirm only three values are rendered:
+     - wins
+     - losses
+     - streak
+   - confirm no MMR row and no MMR placeholder is displayed.
+   - confirm fixed text positions are approximately:
+     - wins: `left 110`, `top 35`, `font-size 34`
+     - losses: `left 120`, `top 130`, `font-size 30`
+     - streak: `left 150`, `top 220`, `font-size 37`
+   - confirm streak formatting is signed:
+     - positive => `+N`
+     - zero => `0`
+     - negative => `-N`
+   - confirm streak color remains white for positive and negative values.
+14.3.4 Validate JSTKISS scale/layout behavior:
+   - set scale to `50%` and confirm window is `200x150` equivalent
+   - set scale to `150%` and confirm window is `600x450` equivalent
+   - confirm JSTKISS text coordinates remain fixed internally while scale applies to whole panel.
+14.3.5 Validate NativeTheme-specific rendering:
+   - switch `Theme` to `RocketStats NativeTheme`
+   - confirm overlay uses `/overlay-themes/rocketstats-NativeTheme/background.png`
+   - confirm all four values are rendered:
+     - MMR
+     - streak
+     - wins
+     - losses
+   - confirm fixed text positions are approximately:
+     - MMR: `left 180`, `top 18`, `font-size 34`
+     - streak: `left 160`, `top 90`, `font-size 30`
+     - wins: `left 180`, `top 155`, `font-size 30`
+     - losses: `left 180`, `top 225`, `font-size 30`
+   - confirm colors remain:
+     - MMR: `rgb(90, 64, 5)`
+     - streak: `rgb(2, 66, 90)` for positive and negative
+     - wins/losses: white
+   - confirm MMR state behavior:
+     - loading => `...`
+     - failed/unavailable => `N/A`
+     - synced/ready => signed value (`+N`, `-N`, `0`, never `+0`).
+14.3.6 Validate NativeTheme scale/layout behavior:
+   - set scale to `50%` and confirm window is `132x138` equivalent
+   - set scale to `150%` and confirm window is `396x413` equivalent
+   - confirm NativeTheme text coordinates remain fixed internally while scale applies to whole panel.
+14.3.7 Validate Minimalist-specific rendering:
+   - switch `Theme` to `Minimalist`
+   - confirm overlay uses `/overlay-themes/minimalist/background.png`
+   - confirm all four values are rendered:
+     - MMR
+     - streak
+     - wins
+     - losses
+   - confirm fixed text positions are approximately:
+     - MMR: `left 75`, `top 9`, `font-size 18`
+     - streak: `left 100`, `top 35`, `font-size 18`
+     - wins: `left 75`, `top 61`, `font-size 18`
+     - losses: `left 100`, `top 85`, `font-size 18`
+   - confirm colors remain:
+     - MMR: `rgb(200, 200, 1)`
+     - streak: `rgb(1, 113, 167)` for positive and negative
+     - wins: `rgb(1, 204, 1)`
+     - losses: `rgb(118, 1, 1)`
+   - confirm MMR state behavior:
+     - loading => `...`
+     - failed/unavailable => `N/A`
+     - synced/ready => signed value (`+N`, `-N`, `0`, never `+0`).
+14.3.8 Validate Minimalist scale/layout behavior:
+   - set scale to `50%` and confirm window is `73x89` equivalent
+   - set scale to `150%` and confirm window is `219x266` equivalent
+   - confirm Minimalist text coordinates remain fixed internally while scale applies to whole panel.
+14.4 Click `Open runtime logs folder` and confirm Windows Explorer opens:
+    - `AppData/plugins/runtime/win_loss_overlay/logs/`
+14.5 Validate RocketStats attribution content:
+   - detail page title/description uses RocketStats wording (re-integrated into RLPeak)
+   - page states it was originally built for BakkesMod and now re-integrated into RLPeak
+   - credits/attribution section references RocketStats project and MIT license
+   - external source link opens in external browser (not inside RLPeak view).
+15. Use Back to Plugins and confirm list remains usable.
+16. If RL path is missing/invalid, confirm enabling plugin shows a friendly setup message and guides to Settings.
+17. If first enable changes `DefaultStatsAPI.ini`, confirm message:
+    - `Restart Rocket League once to enable the overlay.`
+18. Confirm runtime artifacts are local-only:
+    - `AppData/plugins/runtime/win_loss_overlay/session.json` updates while runtime is active
+    - `AppData/plugins/runtime/win_loss_overlay/logs/runtime.log` receives runtime entries
+    - `<rocketLeaguePath>/TAGame/Config/DefaultStatsAPI.ini.bak_<timestamp>` exists if INI was modified
+19. Click `Disable` and confirm runtime stops, overlay hides, and enabled state persists as false.
+19.1 While status is `Waiting for Rocket League` or `Error`, confirm `Disable` remains clickable and works.
+19.2 Confirm `Force stop overlay` is visible on plugin detail page and always recoverable:
+   - works while `Waiting for Rocket League`
+   - works while `Error`
+   - works if overlay opened but did not connect yet.
+19.3 After clicking `Enable`, confirm RLPeak main app stays responsive:
+   - Plugins reload does not spin forever
+   - Items page still loads catalogs normally
+   - main window drag/minimize/maximize still works.
+19.4 Confirm force-stop closes/hides overlay window even if runtime startup was partial.
+19.5 Confirm startup auto-start with persisted enabled state:
+   - enable Win/Loss Overlay and close RLPeak without disabling plugin
+   - relaunch RLPeak
+   - verify runtime auto-starts and overlay window auto-shows without manual Disable/Enable cycle
+   - verify status updates to `Waiting for Rocket League` / `Connected` / `Restart Rocket League` as appropriate.
+19.6 Confirm startup auto-start does not run when plugin is disabled before exit:
+   - disable plugin
+   - close and relaunch RLPeak
+   - verify overlay window does not auto-show and runtime remains stopped.
+19.7 Confirm shutdown cleanup runs on app close:
+   - enable overlay and ensure runtime is active (`Waiting`/`Connected`/`In Match`)
+   - close RLPeak (titlebar close button or Alt+F4)
+   - relaunch RLPeak
+   - verify no stale duplicate overlay windows or stuck runtime control state from previous session.
+19.8 Confirm shutdown cleanup preserves enabled state:
+  - keep plugin enabled, close RLPeak, relaunch RLPeak
+  - verify plugin still shows enabled and startup bootstrap auto-starts runtime again.
+19.9 Confirm startup auto-start also reuses saved overlay theme/settings:
+  - save non-default overlay settings
+  - keep plugin enabled and close RLPeak
+  - relaunch RLPeak
+  - verify overlay opens with the saved theme/scale/opacity/position.
+19.10 Validate automatic `DefaultStatsAPI.ini` hardening:
+  - close Rocket League
+  - set `<rocketLeaguePath>\TAGame\Config\DefaultStatsAPI.ini` manually to:
+    - `[TAGame.MatchStatsExporter_TA]`
+    - `PacketSendRate=0`
+    - `Port=12345`
+  - enable Win/Loss overlay
+  - confirm file is auto-fixed to:
+    - `PacketSendRate=30`
+    - `Port=49123` (preferred/default; fallback only when `49123` is unavailable)
+  - confirm backup exists:
+    - `DefaultStatsAPI.ini.bak_YYYYMMDD_HHMMSS`
+  - launch Rocket League and confirm overlay connects.
+19.11 Validate restart-required behavior when RL is running:
+  - while Rocket League is running, set `PacketSendRate=0` again
+  - disable/enable plugin
+  - confirm INI is fixed
+  - confirm runtime/UI shows:
+    - `Restart Rocket League once to enable the overlay.`
+  - restart Rocket League and confirm overlay works.
+19.12 Validate missing INI behavior:
+  - delete/rename `DefaultStatsAPI.ini`
+  - enable plugin
+  - confirm RLPeak recreates the INI with required section/keys.
+19.13 Validate missing/invalid RL path behavior:
+  - clear or break RL path in Settings
+  - enable plugin
+  - confirm friendly setup guidance is shown and app does not crash.
+20. Click `Uninstall` and confirm cached plugin folder is removed.
+21. Disconnect internet and reopen Plugins:
+   - if plugin metadata cache exists, cards and installed state should still be visible
+   - if no cache exists, show friendly unavailable state.
 3. Open `About`.
 4. Confirm app/version/no-injection metadata is shown.
 
@@ -376,6 +660,8 @@ Run this quick checklist before sign-off:
   - active boost shown (or friendly empty state)
   - News/Info/Updates block is present
   - News/Info/Updates block contains no technical paths
+  - News/Info/Updates refresh button works
+  - dashboard news still renders from cache/fallback when remote endpoint is unavailable
 - Items Decal:
   - searchable car dropdown/combobox
   - full car list appears when combobox opens
@@ -416,7 +702,43 @@ Run this quick checklist before sign-off:
 - About:
   - metadata visibility
 - Plugins:
-  - intentional placeholder behavior
+  - plugin cards render from remote manifest
+  - plugin cards stay compact (icon/name/summary/version/status/install/runtime pill/actions)
+  - action-only plugins (for example Workshop Map Loader) do not show `Enable` / `Disable`
+  - plugin cards include `Manage` and do not inline full overlay settings blocks
+  - Manage opens `/plugins/:pluginId` detail page
+  - plugin detail page uses split layout on wide screens:
+    - left action/settings panel
+    - right presentation/product panel
+  - uninstalled plugin detail state keeps presentation visible while hiding runtime/settings controls
+  - unknown `/plugins/:pluginId` route shows friendly not-found state
+  - install downloads only allowed asset types (`.json`, `.png`, `.jpg`, `.jpeg`, `.svg`, `.webp`)
+  - blocked types are rejected (`.exe`, `.dll`, `.py`, `.bat`, `.cmd`, `.ps1`, `.js`, `.mjs`, `.ts`, `.sh`, `.wasm`)
+  - Enable starts built-in runtime and opens overlay window for toggle-capable runtime plugins (for example RocketStats)
+  - status pill reflects `Stopped` / `Waiting for Rocket League` / `Restart Rocket League` / `Connected` / `In Match` / `Error`
+  - plugin detail theme selector is registry-driven (currently `RocketStats Circle`, `RocketStats JSTKISS`, `RocketStats NativeTheme`, `Minimalist`)
+  - plugin detail preview uses the same renderer as the real overlay window
+  - save/reset overlay settings persist correctly
+  - enable/startup auto-validates `DefaultStatsAPI.ini` and enforces:
+    - `[TAGame.MatchStatsExporter_TA]`
+    - `PacketSendRate=30`
+    - `Port=<selected runtime port>`
+  - INI rewrite is idempotent (no rewrite/no backup when already correct)
+  - INI modification creates timestamped backup (`DefaultStatsAPI.ini.bak_YYYYMMDD_HHMMSS`)
+  - if INI changed while RL is running, status/message reports restart required once
+  - permission-denied INI update maps to friendly admin/permissions message
+  - scale slider is visible (`50%..150%`, step `5%`, default `100%`)
+  - MMR debug fields are not shown in normal settings UI
+  - no `Show MMR` toggle is shown (MMR always rendered in Circle)
+  - MMR states follow `loading/ready/syncing/synced/failed`
+  - overlay renders safe default UI even before runtime events
+  - missing/corrupt theme payload does not blank overlay
+  - Reset session clears W/L/streak
+  - Show/Hide overlay controls the separate overlay window
+  - Open runtime logs folder opens `AppData/plugins/runtime/win_loss_overlay/logs/`
+  - Disable stops runtime, hides overlay, and persists enabled=false
+  - Uninstall removes plugin cache + installed state
+  - friendly unavailable state when catalog cannot be loaded and no cache exists
 - Custom shell behavior:
   - titlebar brand says `RLPeak`
   - drag window works from title bar
@@ -471,3 +793,140 @@ Before publishing:
   - `AppData/cache/ItemsFiles` (download-on-apply cache)
   - `AppData/Backups/originals` (backup-once flow)
 - Confirm the release checklist in `RELEASE_CHECKLIST.md` is fully completed.
+
+## 18. Workshop Map Loader plugin QA (Phase 23)
+
+1. Open `Plugins` and confirm `Workshop Map Loader` appears as a compact plugin card.
+2. Open `Manage` for `Workshop Map Loader`.
+3. Confirm split layout:
+   - left action/info panel (install/uninstall, refresh/remove actions, active map, description)
+   - right map catalog panel.
+4. Confirm Workshop does not show `Enable` / `Disable` on the card or detail page.
+5. While uninstalled, confirm map actions/settings controls are hidden and install guidance is shown.
+6. Install plugin (no enable step).
+7. Click `Refresh maps` and confirm catalog loads.
+8. Confirm search input is in the right map catalog section (above map cards), then verify search filters by:
+   - map name
+   - author display name.
+9. Confirm map cards show:
+   - banner
+   - map name
+   - author
+   - short description
+   - `Load` button.
+10. With Rocket League closed, load a map and confirm:
+    - the selected map card shows:
+      - `Downloading and loading...`
+    - a centered progress modal appears immediately:
+      - title: `Downloading workshop map`
+      - subtitle: selected map name
+      - copy: `This can take a while for large maps. Please keep RLPeak open.`
+      - step list:
+        - `Checking Rocket League path`
+        - `Preparing cache`
+        - `Downloading map`
+        - `Installing into Rocket League mods folder`
+        - `Finalizing`
+      - spinner/indeterminate progress is visible
+      - modal is not dismissible during active load (`Escape`/backdrop do not close)
+    - no false timeout error appears at 15 seconds while download is still in progress.
+11. After successful load, confirm post-load tutorial modal appears:
+    - title: `Workshop map loaded`
+    - message adapts to restart requirement:
+      - first load (no previous `mods\Labs_Utopia_P.upk`): restart wording appears
+      - replace existing mod file: `No game restart needed` wording appears
+    - three step cards are visible on desktop:
+      - restart-required path:
+        - Restart Rocket League
+        - Open Free Play
+        - Select Utopia Retro
+      - no-restart path:
+        - Leave current map
+        - Open Free Play
+        - Select Utopia Retro
+    - tutorial images display `Click to enlarge` hint
+    - clicking an image opens the lightbox above all map cards
+    - close works via `Got it`, `X`, `Escape`, and backdrop click.
+12. Confirm tutorial image paths resolve from local bundled assets:
+    - `/plugin-assets/workshop_map_loader/tutorial_restart.png`
+    - `/plugin-assets/workshop_map_loader/tutorial_freeplay.png`
+    - `/plugin-assets/workshop_map_loader/tutorial_utopia_retro.png`
+13. Confirm missing tutorial image still renders placeholder safely (no layout break/crash).
+14. Confirm failed map load closes progress modal and does not open the post-load tutorial modal.
+15. Confirm successful map load still writes:
+   - `<rocketLeaguePath>\TAGame\CookedPCConsole\mods\Labs_Utopia_P.upk` is created/updated
+   - `<rocketLeaguePath>\TAGame\CookedPCConsole\Labs_Utopia_P.upk` remains unchanged
+   - `AppData/plugins/runtime/workshop_map_loader/active_map.json` is written.
+16. Load a second map and confirm:
+    - `mods\Labs_Utopia_P.upk` is updated with the new selection
+    - original `CookedPCConsole\Labs_Utopia_P.upk` remains unchanged.
+17. Click `Remove loaded map` and confirm:
+    - `<rocketLeaguePath>\TAGame\CookedPCConsole\mods\Labs_Utopia_P.upk` is removed
+    - `active_map.json` is cleared.
+18. With Rocket League running, attempt `Load` and confirm load is still allowed when file operations succeed:
+    - first map load (mods file absent) still reports restart-required guidance
+    - map switch (mods file existed) reports no-restart-needed guidance.
+19. With Rocket League running, click `Remove loaded map` and confirm:
+    - remove succeeds when file operation succeeds
+    - message: `Workshop map removed. Restart Rocket League to return to the normal Utopia Retro map.`
+20. If a map load/remove fails because file is currently in use, confirm friendly guidance:
+    - `RLPeak could not replace the map because it is currently in use. Leave the current Free Play map or close Rocket League, then try again.`
+21. Validate missing/invalid RL path maps to friendly Settings guidance.
+22. Validate permission-denied copy/write surfaces admin/permissions guidance message:
+    - `RLPeak could not write the workshop map. Try running RLPeak as administrator or check folder permissions.`
+
+## 19. Anonymous usage metrics QA
+
+1. Open `Settings` and locate the toggle:
+   - `Anonymous usage metrics`
+2. Confirm description copy states:
+   - anonymous usage events only
+   - no Rocket League account data
+   - no local file paths.
+3. Fresh install state:
+   - confirm metrics toggle defaults to enabled.
+4. Confirm local telemetry state file exists after app start:
+   - `AppData/telemetry.json`
+5. Validate `telemetry.json` fields:
+   - `schema: rlpeak_telemetry_state.v1`
+   - `install_id` (UUID)
+   - `metrics_enabled`
+   - `last_app_start_sent_at`
+   - `last_daily_active_sent_at`.
+6. Disable metrics from Settings:
+   - confirm success status message
+   - confirm `metrics_enabled` becomes `false` in `AppData/telemetry.json`.
+7. Re-enable metrics from Settings:
+   - confirm success status message
+   - confirm `metrics_enabled` becomes `true`.
+8. Confirm app behavior remains unaffected when metrics endpoint is unavailable:
+   - startup, apply, plugin actions, and workshop load/restore must continue normally
+   - no blocking modal/error should appear for metrics failures.
+
+## 20. V1.0.0 -> V1.1.0 upgrade migration QA
+
+1. Install RLPeak V1.0.0 and configure Rocket League path.
+2. Apply at least one item in `Items` to ensure backup-once files are created.
+3. Close RLPeak.
+4. Install RLPeak V1.1.0 using the normal installer upgrade flow (including `Uninstall before installing` when prompted).
+5. Launch V1.1.0 and verify:
+   - `rocketLeaguePath` is still present in Settings
+   - app starts without migration crashes
+   - Dashboard renders even if news API is unavailable (cache/fallback).
+6. In `Items`, run reset/restore actions and confirm existing V1.0.0 backups still restore correctly.
+7. Confirm plugin pages load with no pre-existing plugin state:
+   - RocketStats is available/installable
+   - Workshop Map Loader is available/installable.
+8. Confirm AppData migration safety:
+   - `AppData/state/app_state.json` is still present
+   - `AppData/Backups` still contains previous backups
+   - `AppData/ItemsFiles` and `AppData/cache` are not unexpectedly deleted.
+9. Confirm telemetry/news files are created safely on first V1.1.0 run:
+   - `AppData/telemetry.json` (metrics state)
+   - `AppData/dashboard_news_cache.json` only after successful news fetch.
+10. Workshop legacy safety:
+    - if legacy file exists at
+      `AppData/plugins/runtime/workshop_map_loader/backups/Labs_Utopia_P.original.upk`,
+      page remains usable and shows migration-safe notice
+    - `Remove loaded map` still removes only
+      `<rocketLeaguePath>\TAGame\CookedPCConsole\mods\Labs_Utopia_P.upk`.

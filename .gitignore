@@ -1,5 +1,5 @@
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,44 +7,35 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-build
+# Dependencies
+node_modules/
+.npm-cache/
+
+# Frontend build/cache outputs
+dist/
+dist-ssr/
+build/
+.vite/
+.cache/
+.parcel-cache/
+.eslintcache
+*.tsbuildinfo
+
+# Test/coverage outputs
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
 
 # Tauri/Rust build outputs
 src-tauri/target/
 src-tauri/AppData/
-src-tauri/target/release/bundle/
 
-# Runtime AppData artifacts (created locally at runtime)
-AppData/cache/
-AppData/Backups/
-AppData/ItemsFiles/
-AppData/state/app_state.json
-AppData/catalogs/*.json
-
-# Rocket League / packaged item files
-*.upk
-*.bnk
-
-# Python cache / local tools
-__pycache__/
-*.pyc
-
-# Transient download artifacts
-*.download
-
-.vscode/
-
-# Common release artifact folders
+# Release/package artifacts
 release/
 releases/
 out/
 artifacts/
-
-# Installer/package artifacts
 *.msi
 *.msix
 *.exe
@@ -54,6 +45,40 @@ artifacts/
 *.deb
 *.rpm
 *.AppImage
+
+# Runtime AppData artifacts created locally by RLPeak
+AppData/cache/
+AppData/Backups/
+AppData/ItemsFiles/
+AppData/state/app_state.json
+AppData/catalogs/*.json
+AppData/plugins/
+AppData/telemetry.json
+AppData/dashboard_news_cache.json
+AppData/*.tmp
+AppData/*.download
+
+# Local-only reference datasets / generated RL assets
+# Keep these out of GitHub. They are large and/or dev-only.
+dev_references/
+RLHUB_ASSETS/
+maps_files/
+texture_scan*/
+*_scan/
+*.upk
+*.udk
+*.bnk
+
+# Python cache / local tools
+__pycache__/
+*.pyc
+
+# Transient download/temp artifacts
+*.download
+*.tmp
+*.temp
+*.bak
+*.orig
 
 # Environment files
 .env
@@ -72,11 +97,14 @@ artifacts/
 id_rsa
 id_rsa.pub
 
-# Temp files
-*.tmp
-*.temp
-*.bak
-*.orig
+# Local server/API export scratch files
+# Do not ignore every manifest.json globally because some app projects may need one.
+server_exports/
+api_exports/
+rlpeak_plugin_server_json/
+rlpeak_metrics_backend/
+dashboard_news_cache.json
+/manifest.json
 
 # Internal Codex / project-memory docs
 AGENTS.md
@@ -84,13 +112,12 @@ README_CODEX_WORKFLOW.md
 PROJECT_STATE.md
 DEV_CHECKLIST.md
 CODE_REVIEW.md
-
-manifest.json
+UI_DESIGN_SPEC.md
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*

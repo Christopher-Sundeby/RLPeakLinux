@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-destroy",
+  "description": "Allow final main-window destroy after shutdown cleanup.",
+  "windows": ["main"],
+  "permissions": [
+    "core:window:allow-destroy"
+  ]
+}

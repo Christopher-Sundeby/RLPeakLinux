@@ -4,6 +4,8 @@
 
 RLPeak is a Windows desktop application for Rocket League item customization.
 
+Current release target: **V1.1.0**.
+
 It is inspired by BakkesMod’s fast item workflow, but RLPeak does **not** inject into Rocket League. It only applies prepared `.upk` files by replacing files in Rocket League’s `CookedPCConsole` folder.
 
 ## Product goal
@@ -85,11 +87,49 @@ Items onboarding:
 - The modal explains refresh behavior in simple player terms.
 - Decals/Wheels can usually refresh without restart when users switch away from the RLPeak item, leave Garage, apply, then re-equip.
 - Boost changes require restarting Rocket League after Apply/Reset.
-- The guide can be reopened anytime from the Items page via `How to refresh items`.
+- The guide can be reopened anytime from the Items page via `Why don't I see my item?`.
 
 ### Plugins
 
-Product-style `Coming soon` placeholder page.
+Plugins page supports a curated remote plugin catalog flow:
+- list plugins from `https://api.rlpeak.com/v1/plugins/manifest.json`
+- install/uninstall plugin metadata/assets cache
+- persist enabled/disabled state
+- use a split UX:
+  - compact catalog list at `/plugins`
+  - dedicated plugin detail/manage page at `/plugins/:pluginId`.
+
+V1 built-in plugin runtime:
+- `win_loss_overlay` (`runtime: builtin.win_loss_overlay.v1`) is executed only by built-in RLPeak code.
+- no Python runtime is executed and no executable plugin code is downloaded.
+- plugin assets remain metadata/theme/media only (`.json`, `.png`, `.jpg`, `.jpeg`, `.svg`, `.webp`).
+- enabling the plugin:
+  - starts the built-in Stats API session runtime
+  - opens a separate transparent overlay window
+  - displays session wins, losses, streak, and runtime status.
+- overlay theming:
+  - Win/Loss overlay uses a built-in theme system (theme registry + typed config).
+  - V1 includes `RocketStats Circle` style (`theme_id: rocketstats_circle`) with safe fallback rendering.
+  - Circle theme uses the real RocketStats Circle panel asset (`background.tga` converted to `/overlay-themes/rocketstats-circle/background.png`) with fixed pixel positions.
+  - MMR row is always rendered for Circle (no user-facing show/hide toggle).
+  - theme/settings (theme, position, scale, opacity, status visibility) persist in local app state.
+  - MMR data source is tracker.gg with user-facing statuses (`loading`, `ready`, `syncing`, `synced`, `failed`).
+  - missing/corrupt theme data never blanks the overlay; RLPeak always renders a safe fallback UI.
+- disabling the plugin stops runtime and hides the overlay window.
+- if `DefaultStatsAPI.ini` is changed, RLPeak prompts:
+  - `Restart Rocket League once to enable the overlay.`
+
+Additional built-in plugin:
+- `workshop_map_loader` (`runtime: builtin.workshop_map_loader.v1`)
+  - browse workshop maps catalog from RLPeak API plugin files
+  - search by map/author
+  - load selected map by writing:
+    - `<rocketLeaguePath>\TAGame\CookedPCConsole\mods\Labs_Utopia_P.upk`
+  - keep original file untouched:
+    - `<rocketLeaguePath>\TAGame\CookedPCConsole\Labs_Utopia_P.upk`
+  - remove loaded map with one click to return to normal Utopia Retro behavior
+  - block load/remove while Rocket League is running with friendly warning
+  - no injection, no memory editing, no process hooks
 
 ### Settings
 

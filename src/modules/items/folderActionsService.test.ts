@@ -40,6 +40,7 @@ describe("folderActionsService", () => {
       itemsWheelDir: "C:/repo/AppData/ItemsFiles/Wheel",
       itemsBoostDir: "C:/repo/AppData/ItemsFiles/Boost",
       cacheRoot: "C:/repo/AppData/cache",
+      cachePluginsRoot: "C:/repo/AppData/cache/Plugins",
       cacheItemsRoot: "C:/repo/AppData/cache/ItemsFiles",
       cacheItemsSkinDir: "C:/repo/AppData/cache/ItemsFiles/Skin",
       cacheItemsWheelDir: "C:/repo/AppData/cache/ItemsFiles/Wheel",
@@ -141,3 +142,6 @@ describe("folderActionsService", () => {
     });
   });
 });
+
+
+

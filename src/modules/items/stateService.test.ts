@@ -19,6 +19,7 @@ import {
   loadAppState,
   migrateAppState,
   readItemsGuideSeenState,
+  saveRocketLeaguePathSetting,
   saveItemsGuideSeenState,
   saveItemsUiSelectionState,
 } from "./stateService";
@@ -38,6 +39,7 @@ describe("stateService migration", () => {
       itemsWheelDir: "C:/repo/AppData/ItemsFiles/Wheel",
       itemsBoostDir: "C:/repo/AppData/ItemsFiles/Boost",
       cacheRoot: "C:/repo/AppData/cache",
+      cachePluginsRoot: "C:/repo/AppData/cache/Plugins",
       cacheItemsRoot: "C:/repo/AppData/cache/ItemsFiles",
       cacheItemsSkinDir: "C:/repo/AppData/cache/ItemsFiles/Skin",
       cacheItemsWheelDir: "C:/repo/AppData/cache/ItemsFiles/Wheel",
@@ -87,6 +89,41 @@ describe("stateService migration", () => {
     expect(migrated.uiSelections?.items?.selectedBoostFolder).toBe(null);
     expect(migrated.uiState?.itemsGuideSeen).toBe(false);
     expect(migrated.uiSelections?.items?.selectedCarKey).toBe("ACE");
+    expect(migrated.plugins).toEqual({});
+  });
+
+  it("migrates plugins state entries to safe defaults", () => {
+    const migrated = migrateAppState({
+      plugins: {
+        win_loss_overlay: {
+          installed: true,
+          enabled: true,
+          version: "1.0.0",
+          overlay_settings: {
+            theme_id: "rocketstats_circle",
+            scale: 0.56,
+          },
+          tutorials: {
+            borderless_display_seen: true,
+            ignored_non_boolean: "true" as unknown as boolean,
+          },
+        },
+        broken_entry: "invalid" as unknown as Record<string, unknown>,
+      },
+    });
+
+    expect(migrated.plugins?.win_loss_overlay?.installed).toBe(true);
+    expect(migrated.plugins?.win_loss_overlay?.enabled).toBe(true);
+    expect(migrated.plugins?.win_loss_overlay?.version).toBe("1.0.0");
+    expect(migrated.plugins?.win_loss_overlay?.overlay_settings).toEqual({
+      theme_id: "rocketstats_circle",
+      scale: 0.56,
+    });
+    expect(migrated.plugins?.win_loss_overlay?.tutorials).toEqual({
+      borderless_display_seen: true,
+    });
+    expect(migrated.plugins?.broken_entry?.installed).toBe(false);
+    expect(migrated.plugins?.broken_entry?.enabled).toBe(false);
   });
 
   it("migrates loaded state from disk without resetting Rocket League path", async () => {
@@ -110,6 +147,85 @@ describe("stateService migration", () => {
     expect(state.activeItems?.Boost?.current).toBe(null);
     expect(state.uiSelections?.items?.selectedBoostFolder).toBe(null);
     expect(state.uiState?.itemsGuideSeen).toBe(false);
+  });
+
+  it("migrates V1.0.0-like app_state and preserves existing item state while initializing plugin/runtime fields safely", async () => {
+    mocked.invoke.mockResolvedValue(
+      JSON.stringify({
+        rocketLeaguePath: "C:/Program Files/Epic Games/rocketleague",
+        activeItems: {
+          Skin: {
+            ACE: {
+              skin_folder: "skin_aa_livery1_SF",
+              base_file: "TAGame/CookedPCConsole/ACESkin.upk",
+            },
+          },
+          Wheel: {
+            current: {
+              wheel_folder: "wheel_10year_SF",
+            },
+          },
+        },
+      }),
+    );
+
+    const state = await loadAppState();
+
+    expect(state.rocketLeaguePath).toBe("C:/Program Files/Epic Games/rocketleague");
+    expect(state.activeItems?.Skin?.ACE?.skin_folder).toBe("skin_aa_livery1_SF");
+    expect(state.activeItems?.Wheel?.current?.wheel_folder).toBe("wheel_10year_SF");
+    expect(state.activeItems?.Boost?.current).toBe(null);
+    expect(state.plugins).toEqual({});
+    expect(state.uiSelections?.items?.selectedBoostFolder).toBe(null);
+    expect(state.uiState?.itemsGuideSeen).toBe(false);
+  });
+
+  it("preserves legacy optional state branches and custom metadata during migration", () => {
+    const migrated = migrateAppState({
+      rocketLeaguePath: "C:/Games/RocketLeague",
+      plugins: {
+        workshop_map_loader: {
+          installed: true,
+          enabled: false,
+        },
+      },
+      backupIndex: {
+        legacy: true,
+        skin: ["ACE"],
+      },
+      customNotes: "preserve me",
+    });
+
+    expect(migrated.rocketLeaguePath).toBe("C:/Games/RocketLeague");
+    expect(migrated.plugins?.workshop_map_loader?.installed).toBe(true);
+    expect(migrated.backupIndex).toEqual({
+      legacy: true,
+      skin: ["ACE"],
+    });
+    expect(migrated.customNotes).toBe("preserve me");
+  });
+
+  it("does not run destructive file operations during migration/load", async () => {
+    const calls: Array<string> = [];
+    mocked.invoke.mockImplementation(async (command, payload) => {
+      calls.push(String(command));
+      if (command === "read_text_file") {
+        return JSON.stringify({
+          rocketLeaguePath: "C:/Program Files/Epic Games/rocketleague",
+        });
+      }
+      if (command === "write_text_file") {
+        return undefined;
+      }
+
+      throw new Error(`Unexpected command: ${String(command)} payload=${JSON.stringify(payload)}`);
+    });
+
+    await loadAppState();
+    await saveRocketLeaguePathSetting("C:/Program Files/Epic Games/rocketleague");
+
+    expect(calls.every((command) => command === "read_text_file" || command === "write_text_file")).toBe(true);
+    expect(calls.some((command) => command === "remove_path")).toBe(false);
   });
 
   it("persists selected car and decal selections when saving items UI state", async () => {

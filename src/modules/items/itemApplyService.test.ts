@@ -15,6 +15,8 @@ const mocked = vi.hoisted(() => ({
   getCookedPcConsolePath: vi.fn(),
   loadAppState: vi.fn(),
   saveAppState: vi.fn(),
+  trackEvent: vi.fn(),
+  mapItemApplyFailureToMetricsCode: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -54,6 +56,11 @@ vi.mock("./stateService", () => ({
   saveAppState: mocked.saveAppState,
 }));
 
+vi.mock("../metrics/metricsService", () => ({
+  trackEvent: mocked.trackEvent,
+  mapItemApplyFailureToMetricsCode: mocked.mapItemApplyFailureToMetricsCode,
+}));
+
 import { applyBoost, applySkin, applyWheel } from "./itemApplyService";
 
 describe("itemApplyService.applySkin", () => {
@@ -75,6 +82,7 @@ describe("itemApplyService.applySkin", () => {
       itemsWheelDir: "C:/RLHub/AppData/ItemsFiles/Wheel",
       itemsBoostDir: "C:/RLHub/AppData/ItemsFiles/Boost",
       cacheRoot: "C:/RLHub/AppData/cache",
+      cachePluginsRoot: "C:/RLHub/AppData/cache/Plugins",
       cacheItemsRoot: "C:/RLHub/AppData/cache/ItemsFiles",
       cacheItemsSkinDir: "C:/RLHub/AppData/cache/ItemsFiles/Skin",
       cacheItemsWheelDir: "C:/RLHub/AppData/cache/ItemsFiles/Wheel",
@@ -114,6 +122,8 @@ describe("itemApplyService.applySkin", () => {
       created: true,
       message: "Backup created",
     });
+    mocked.trackEvent.mockReset();
+    mocked.mapItemApplyFailureToMetricsCode.mockReturnValue("unknown");
     mocked.loadAppState.mockResolvedValue({});
     mocked.saveAppState.mockResolvedValue(undefined);
   });
@@ -190,6 +200,7 @@ describe("itemApplyService.applySkin", () => {
         timestamp: "2026-05-06T12:34:56.000Z",
       },
     });
+    expect(mocked.trackEvent).toHaveBeenCalledWith("item_apply_success");
   });
 
   it("applies a wheel successfully when source and destination files exist", async () => {
@@ -259,6 +270,44 @@ describe("itemApplyService.applySkin", () => {
     });
   });
 
+  it("keeps item apply success flow intact even if metrics tracking throws", async () => {
+    mocked.trackEvent.mockImplementation(() => {
+      throw new Error("metrics unavailable");
+    });
+
+    const sourcePath =
+      "C:/RLHub/AppData/ItemsFiles/Wheel/wheel_10year_SF/WHEEL_Vortex_SF.upk";
+    const destinationPath =
+      "C:/Games/RocketLeague/TAGame/CookedPCConsole/WHEEL_Vortex_SF.upk";
+
+    mocked.invoke.mockImplementation(async (command: string, args?: Record<string, string>) => {
+      if (command === "path_exists") {
+        return args?.path === sourcePath || args?.path === destinationPath;
+      }
+
+      if (command === "copy_file") {
+        return undefined;
+      }
+
+      throw new Error(`Unexpected command: ${command}`);
+    });
+
+    const wheel: WheelCatalogItem = {
+      wheel_folder: "wheel_10year_SF",
+      ingame_wheel_name: "10 Year",
+      item_type: "Wheel",
+      output_upk_file: "WHEEL_Vortex_SF.upk",
+    };
+
+    const result = await applyWheel({
+      rocketLeaguePath: "C:/Games/RocketLeague",
+      wheel,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.message).toBe("Applied successfully");
+  });
+
   it("returns missing source file error for skin apply when source file does not exist", async () => {
     const sourcePath =
       "C:/RLHub/AppData/ItemsFiles/Skin/ACE/skin_aa_livery1_SF/skin_aa_flames_tierall_SF.upk";
@@ -294,6 +343,10 @@ describe("itemApplyService.applySkin", () => {
       code: "MissingItemFile",
       message: "Missing item file",
       details: `Source missing: ${sourcePath}`,
+    });
+    expect(mocked.mapItemApplyFailureToMetricsCode).toHaveBeenCalled();
+    expect(mocked.trackEvent).toHaveBeenCalledWith("item_apply_failed", {
+      errorCode: "unknown",
     });
     expect(mocked.ensureBackup).not.toHaveBeenCalled();
     expect(mocked.saveAppState).not.toHaveBeenCalled();
@@ -1099,3 +1152,6 @@ describe("itemApplyService.applySkin", () => {
     });
   });
 });
+
+
+

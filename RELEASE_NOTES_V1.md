@@ -1,3 +1,20 @@
+# RLPeak 1.1.0 - Release Notes
+
+Download: see GitHub Releases.
+
+## Upgrade note
+
+- Upgrading from V1.0.0 preserves local backups and settings. The installer may uninstall the previous program files, but RLPeak user data in AppData is preserved.
+
+## Highlights
+
+- RocketStats overlay plugin with theme/position/scale/opacity controls, click-through behavior, and runtime lifecycle management.
+- Workshop Map Loader plugin with catalog/search/load/remove workflow using `TAGame/CookedPCConsole/mods/Labs_Utopia_P.upk`.
+- Dashboard remote news integration with cache/fallback behavior.
+- Optional anonymous usage metrics client with privacy controls in Settings.
+
+---
+
 # RLPeak 1.0.0 - Release Notes
 
 Download: see GitHub Releases.
