@@ -254,6 +254,11 @@ If you are developing or running RLPeak on Linux (including Arch Linux) and want
 
 This will register the application binary in `~/.local/bin/rlpeak`, install the high-resolution logo to your local icon path, and create a standard Linux `.desktop` entry file at `~/.local/share/applications/rlpeak.desktop`.
 
+To completely **uninstall** RLPeak from your local system:
+```bash
+./uninstall-local-desktop.sh
+```
+
 
 ## QA and Release Workflow
 
