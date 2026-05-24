@@ -211,6 +211,16 @@ To compile and package RLPeak into a production-ready installer/executable:
   ```
   *(Produces `.exe` and `.msi` installers in `src-tauri/target/release/bundle/`)*
 
+  **Recomandation**
+  Use the installer script to have it also build and add to your local bin automaticly
+  ```bash
+  ./install-local-desktop.sh
+  ```
+
+  The binary will be located at `~/.local/bin/rlpeak`
+
+  You can use the install script headless with `./install-local-desktop --install` or `./install-local-desktop --uninstall`
+
 * **Linux**:
   ```bash
   npm run package:release
@@ -238,33 +248,6 @@ To package a debug-enabled application bundle:
 ```bash
 npm run package:debug
 ```
-
-### Local Desktop Launcher Utility (Linux/Arch)
-
-If you are developing or running RLPeak on Linux (including Arch Linux) and want the application to show up with its **application icon** in your system's **search bar / application launcher menu**, we have included a zero-sudo user-wide interactive script.
-
-Simply run the script:
-```bash
-./install-local-desktop.sh
-```
-
-*(Note: The installer automatically checks if you have built the application, and will compile and package it for you first if the binary is missing).*
-
-Upon running, you will be presented with a simple menu selection:
-```text
-=====================================
-      RLPeak Linux Desktop Tool      
-=====================================
-1) Install RLPeak Locally
-2) Uninstall RLPeak Locally
-3) Exit
-=====================================
-```
-
-Selecting option `1` will register the application binary in `~/.local/bin/rlpeak`, install the high-resolution logo to your local icon path, and create a standard Linux `.desktop` entry file at `~/.local/share/applications/rlpeak.desktop`. Selecting option `2` will completely uninstall all RLPeak local components.
-
-*Note: For automated/headless scripts, you can bypass the interactive menu using flags: `./install-local-desktop.sh --install` or `./install-local-desktop.sh --uninstall`.*
-
 
 ## QA and Release Workflow
 
