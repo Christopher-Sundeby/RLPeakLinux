@@ -223,13 +223,14 @@ export async function resolvePreferredRocketLeaguePath(
         home = "";
       }
     }
-    if (!home && typeof process !== "undefined" && process.env) {
-      home = process.env.HOME || "";
+    const globalProcess = (globalThis as any).process;
+    if (!home && typeof globalProcess !== "undefined" && globalProcess.env) {
+      home = globalProcess.env.HOME || "";
     }
   }
 
   for (const candidatePath of COMMON_ROCKET_LEAGUE_PATH_CANDIDATES) {
-    let evaluatedPath = candidatePath;
+    let evaluatedPath: string = candidatePath;
     if (candidatePath.startsWith("~/") && home) {
       evaluatedPath = `${home.replace(/\/$/, "")}/${candidatePath.slice(2)}`;
     }

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // Fallback localStorage mock for Node environment compatibility
 if (typeof localStorage === "undefined") {
   const store = new Map<string, string>();
-  global.localStorage = {
+  (globalThis as any).localStorage = {
     getItem: (key: string) => store.get(key) ?? null,
     setItem: (key: string, value: string) => { store.set(key, value); },
     removeItem: (key: string) => { store.delete(key); },
