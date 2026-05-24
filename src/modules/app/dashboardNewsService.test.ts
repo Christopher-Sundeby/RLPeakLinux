@@ -1,6 +1,19 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+// Fallback localStorage mock for Node environment compatibility
+if (typeof localStorage === "undefined") {
+  const store = new Map<string, string>();
+  global.localStorage = {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => { store.set(key, value); },
+    removeItem: (key: string) => { store.delete(key); },
+    clear: () => { store.clear(); },
+    length: 0,
+    key: (index: number) => Array.from(store.keys())[index] ?? null,
+  } as any;
+}
 import { fetchRemoteJson } from "../items/remoteApiService";
 import {
   DASHBOARD_NEWS_CACHE_LOCAL_STORAGE_KEY,

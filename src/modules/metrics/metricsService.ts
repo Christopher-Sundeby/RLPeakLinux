@@ -109,6 +109,16 @@ export function mapItemApplyFailureToMetricsCode(input: {
   return "unknown";
 }
 
+function getMetricsPlatform(): "windows" | "linux" | "macos" {
+  if (typeof navigator !== "undefined") {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes("windows")) return "windows";
+    if (ua.includes("mac")) return "macos";
+    if (ua.includes("linux")) return "linux";
+  }
+  return "linux";
+}
+
 export function buildMetricsPayload(
   event: MetricsEventName,
   state: TelemetryState,
@@ -119,7 +129,7 @@ export function buildMetricsPayload(
     event,
     install_id: state.install_id,
     app_version: APP_VERSION,
-    platform: "windows",
+    platform: getMetricsPlatform(),
     timestamp: options?.timestamp ?? new Date().toISOString(),
     plugin_id: normalizePluginId(options?.pluginId),
     error_code: normalizeErrorCode(options?.errorCode),

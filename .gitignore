@@ -124,3 +124,7 @@ UI_DESIGN_SPEC.md
 *.njsproj
 *.sln
 *.sw?
+
+# Antigravity CLI
+.antigravitycli/
+

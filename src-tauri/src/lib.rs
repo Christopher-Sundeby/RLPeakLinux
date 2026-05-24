@@ -182,7 +182,25 @@ fn open_folder(path: String) -> Result<(), String> {
         return Ok(());
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
+    {
+        Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|error| format!("OPEN_FAILED: {}", error))?;
+        return Ok(());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|error| format!("OPEN_FAILED: {}", error))?;
+        return Ok(());
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
     {
         Err(format!("OPEN_UNSUPPORTED: {}", path))
     }
@@ -235,7 +253,25 @@ fn open_website(url: String) -> Result<(), String> {
         return Ok(());
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
+    {
+        Command::new("xdg-open")
+            .arg(parsed_url.to_string())
+            .spawn()
+            .map_err(|error| format!("OPEN_FAILED: {}", error))?;
+        return Ok(());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(parsed_url.to_string())
+            .spawn()
+            .map_err(|error| format!("OPEN_FAILED: {}", error))?;
+        return Ok(());
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
     {
         Err(format!("OPEN_UNSUPPORTED: {}", parsed_url))
     }
@@ -258,7 +294,25 @@ fn open_external_url(url: String) -> Result<(), String> {
         return Ok(());
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
+    {
+        Command::new("xdg-open")
+            .arg(parsed_url.to_string())
+            .spawn()
+            .map_err(|error| format!("OPEN_FAILED: {}", error))?;
+        return Ok(());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(parsed_url.to_string())
+            .spawn()
+            .map_err(|error| format!("OPEN_FAILED: {}", error))?;
+        return Ok(());
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
     {
         Err(format!("OPEN_UNSUPPORTED: {}", parsed_url))
     }
@@ -339,7 +393,7 @@ fn download_remote_file(url: String, destination_path: String) -> Result<(), Str
 
 #[tauri::command]
 fn is_rocket_league_running() -> Result<bool, String> {
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
     {
         fn is_rocket_league_name(name: &OsStr) -> bool {
             let normalized = name.to_string_lossy().to_lowercase();
@@ -366,7 +420,7 @@ fn is_rocket_league_running() -> Result<bool, String> {
         return Ok(false);
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
     {
         Ok(false)
     }

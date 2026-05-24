@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// Mock navigator for Windows environment by default in tests
+Object.defineProperty(global, "navigator", {
+  value: {
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+  },
+  writable: true,
+  configurable: true,
+});
+
 const mocked = vi.hoisted(() => ({
   invoke: vi.fn(),
   isTauri: vi.fn(),
@@ -227,5 +236,45 @@ describe("rocketLeaguePathService", () => {
 
     expect(result.ok).toBe(true);
     expect(result.rocketLeaguePath).toBe(rootPath);
+  });
+
+  describe("on Linux", () => {
+    let originalUserAgent: string;
+
+    beforeEach(() => {
+      originalUserAgent = global.navigator.userAgent;
+      (global.navigator as any).userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36";
+      mocked.join.mockImplementation(async (...segments: string[]) => segments.join("/"));
+    });
+
+    afterEach(() => {
+      (global.navigator as any).userAgent = originalUserAgent;
+    });
+
+    it("normalizes Unix path inputs to use forward slashes", () => {
+      const normalized = normalizeRocketLeaguePathInput(
+        "  \"/home/user/Games/rocketleague/TAGame/CookedPCConsole/\"  ",
+      );
+      expect(normalized).toBe("/home/user/Games/rocketleague/TAGame/CookedPCConsole");
+    });
+
+    it("normalizes backslashes in input to forward slashes under Linux", () => {
+      const normalized = normalizeRocketLeaguePathInput(
+        "  \"/home/user\\Games\\rocketleague\\TAGame\"  ",
+      );
+      expect(normalized).toBe("/home/user/Games/rocketleague/TAGame");
+    });
+
+    it("resolves Unix parent path correctly", async () => {
+      const rootPath = "/home/user/.steam/steam/steamapps/common/rocketleague";
+      mocked.invoke.mockImplementation(async (_command: string, payload: { path: string }) => {
+        return payload.path === rootPath || payload.path === `${rootPath}/TAGame/CookedPCConsole` || payload.path === `${rootPath}/Binaries/Win64/RocketLeague.exe`;
+      });
+
+      const result = await resolveRocketLeagueRootFromUserPath(`${rootPath}/Binaries/Win64/RocketLeague.exe`);
+
+      expect(result.isValid).toBe(true);
+      expect(result.rocketLeaguePath).toBe(rootPath);
+    });
   });
 });

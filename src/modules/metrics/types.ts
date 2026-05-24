@@ -23,7 +23,7 @@ export interface MetricsEventPayload {
   event: MetricsEventName;
   install_id: string;
   app_version: string;
-  platform: "windows";
+  platform: "windows" | "linux" | "macos";
   timestamp: string;
   plugin_id: string | null;
   error_code: MetricsErrorCode | null;

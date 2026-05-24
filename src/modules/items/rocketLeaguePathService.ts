@@ -1,5 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { join } from "@tauri-apps/api/path";
+import { join, homeDir } from "@tauri-apps/api/path";
 
 export interface RocketLeaguePathValidationResult {
   rocketLeaguePath: string;
@@ -23,6 +23,9 @@ export const COMMON_ROCKET_LEAGUE_PATH_CANDIDATES = [
   "C:\\Program Files\\Epic Games\\rocketleague",
   "C:\\Program Files (x86)\\Steam\\steamapps\\common\\rocketleague",
   "C:\\Program Files\\Steam\\steamapps\\common\\rocketleague",
+  "~/.local/share/Steam/steamapps/common/rocketleague",
+  "~/.steam/steam/steamapps/common/rocketleague",
+  "~/Games/Heroic/rocketleague",
 ] as const;
 
 export const ROCKET_LEAGUE_PATH_SETUP_MESSAGE = "Choose your Rocket League folder to start applying items.";
@@ -30,8 +33,11 @@ export const ROCKET_LEAGUE_PATH_ACTION_REQUIRED_MESSAGE =
   "Choose your Rocket League folder in Settings before applying items.";
 
 function joinRelativePath(basePath: string, ...segments: string[]): string {
+  const isWin = typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent);
+  const sep = isWin ? "\\" : "/";
   const normalizedBase = basePath.replace(/[\\/]+$/, "");
-  return [normalizedBase, ...segments].join("/").replace(/\\/g, "/");
+  const joined = [normalizedBase, ...segments].join(sep);
+  return isWin ? joined.replace(/\//g, "\\") : joined.replace(/\\/g, "/");
 }
 
 function isWindowsDriveRoot(path: string): boolean {
@@ -40,11 +46,12 @@ function isWindowsDriveRoot(path: string): boolean {
 
 function trimTrailingPathSeparators(path: string): string {
   let next = path;
-  while (next.length > 0 && /[\\/]/.test(next[next.length - 1] ?? "") && !isWindowsDriveRoot(next)) {
+  const isWin = typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent);
+  while (next.length > 0 && /[\\/]/.test(next[next.length - 1] ?? "") && !(isWin && isWindowsDriveRoot(next))) {
     next = next.slice(0, -1);
   }
 
-  if (/^[A-Za-z]:$/.test(next)) {
+  if (isWin && /^[A-Za-z]:$/.test(next)) {
     return `${next}\\`;
   }
 
@@ -61,16 +68,18 @@ function isRocketLeagueExecutable(path: string): boolean {
 
 function getParentPath(path: string): string | null {
   const normalizedPath = normalizeRocketLeaguePathInput(path);
-  if (!normalizedPath || isWindowsDriveRoot(normalizedPath)) {
+  const isWin = typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent);
+  if (!normalizedPath || (isWin && isWindowsDriveRoot(normalizedPath))) {
     return null;
   }
 
-  const lastSeparatorIndex = normalizedPath.lastIndexOf("\\");
+  const sep = isWin ? "\\" : "/";
+  const lastSeparatorIndex = normalizedPath.lastIndexOf(sep);
   if (lastSeparatorIndex <= 0) {
     return null;
   }
 
-  if (lastSeparatorIndex <= 2 && /^[A-Za-z]:/.test(normalizedPath)) {
+  if (isWin && lastSeparatorIndex <= 2 && /^[A-Za-z]:/.test(normalizedPath)) {
     return `${normalizedPath.slice(0, 2)}\\`;
   }
 
@@ -113,8 +122,11 @@ function buildRootCandidates(rawPath: string): string[] {
 export function normalizeRocketLeaguePathInput(rawPath: string): string {
   const trimmed = rawPath.trim();
   const withoutQuotes = trimmed.replace(/^["'](.*)["']$/, "$1").trim();
-  const windowsSeparators = withoutQuotes.replace(/\//g, "\\");
-  return trimTrailingPathSeparators(windowsSeparators);
+  const isWin = typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent);
+  const normalizedSeparators = isWin 
+    ? withoutQuotes.replace(/\//g, "\\") 
+    : withoutQuotes.replace(/\\/g, "/");
+  return trimTrailingPathSeparators(normalizedSeparators);
 }
 
 export async function getCookedPcConsolePath(rocketLeaguePath: string): Promise<string> {
@@ -201,8 +213,28 @@ export async function resolvePreferredRocketLeaguePath(
     }
   }
 
+  const isWin = typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent);
+  let home = "";
+  if (!isWin) {
+    if (isTauri()) {
+      try {
+        home = await homeDir();
+      } catch {
+        home = "";
+      }
+    }
+    if (!home && typeof process !== "undefined" && process.env) {
+      home = process.env.HOME || "";
+    }
+  }
+
   for (const candidatePath of COMMON_ROCKET_LEAGUE_PATH_CANDIDATES) {
-    const resolvedCandidate = await resolveRocketLeagueRootFromUserPath(candidatePath);
+    let evaluatedPath = candidatePath;
+    if (candidatePath.startsWith("~/") && home) {
+      evaluatedPath = `${home.replace(/\/$/, "")}/${candidatePath.slice(2)}`;
+    }
+
+    const resolvedCandidate = await resolveRocketLeagueRootFromUserPath(evaluatedPath);
     if (resolvedCandidate.isValid) {
       return {
         rocketLeaguePath: resolvedCandidate.rocketLeaguePath,
