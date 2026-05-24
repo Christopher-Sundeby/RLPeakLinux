@@ -11,6 +11,12 @@ INSTALL_BIN_DIR="$HOME/.local/bin"
 INSTALL_APPS_DIR="$HOME/.local/share/applications"
 INSTALL_ICONS_DIR="$HOME/.local/share/icons/hicolor/128x128/apps"
 
+# Restore cursor visibility on exit or interrupt
+cleanup() {
+    echo -ne "\033[?25h"
+}
+trap cleanup EXIT INT TERM
+
 install_rlpeak() {
     echo ""
     echo "=== Installing RLPeak Locally ==="
@@ -104,28 +110,68 @@ update_caches() {
 }
 
 show_menu() {
-    echo "====================================="
-    echo "      RLPeak Linux Desktop Tool      "
-    echo "====================================="
-    echo "1) Install RLPeak Locally"
-    echo "2) Uninstall RLPeak Locally"
-    echo "3) Exit"
-    echo "====================================="
-    read -rp "Please choose an option [1-3]: " opt
-    case $opt in
-        1)
+    local selected=0
+    local options=("Install RLPeak Locally" "Uninstall RLPeak Locally" "Exit")
+    local num_options=${#options[@]}
+
+    # Hide cursor for elegant rendering
+    echo -ne "\033[?25l"
+    
+    # Save initial cursor position
+    echo -en "\033[s"
+
+    while true; do
+        # Restore cursor and clear screen from cursor down
+        echo -en "\033[u\033[J"
+        
+        echo "====================================="
+        echo "      RLPeak Linux Desktop Tool      "
+        echo "====================================="
+        for i in "${!options[@]}"; do
+            if [ "$i" -eq "$selected" ]; then
+                # Highlight selected with cyan arrow and bold text
+                echo -e "  \033[1;36m>\033[0m \033[1;36m${options[$i]}\033[0m"
+            else
+                echo -e "    ${options[$i]}"
+            fi
+        done
+        echo "====================================="
+        echo "Use arrow keys (Up/Down) and press Enter to select."
+
+        # Read keystrokes
+        IFS= read -r -s -n1 key
+        if [[ $key == $'\x1b' ]]; then
+            read -r -s -n2 key
+            if [[ $key == "[A" ]]; then # Up Arrow
+                ((selected--))
+                if [ $selected -lt 0 ]; then
+                    selected=$((num_options - 1))
+                fi
+            elif [[ $key == "[B" ]]; then # Down Arrow
+                ((selected++))
+                if [ $selected -ge $num_options ]; then
+                    selected=0
+                fi
+            fi
+        elif [[ $key == "" ]]; then # Enter Key
+            break
+        fi
+    done
+
+    # Restore cursor and clear the menu area
+    echo -ne "\033[?25h"
+    echo -en "\033[u\033[J"
+
+    case $selected in
+        0)
             install_rlpeak
             ;;
-        2)
+        1)
             uninstall_rlpeak
             ;;
-        3)
+        2)
             echo "Exiting..."
             exit 0
-            ;;
-        *)
-            echo "Invalid option. Exiting..."
-            exit 1
             ;;
     esac
 }
