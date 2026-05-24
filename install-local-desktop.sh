@@ -138,17 +138,21 @@ show_menu() {
         echo "====================================="
         echo "Use arrow keys (Up/Down) and press Enter to select."
 
-        # Read keystrokes
-        IFS= read -r -s -n1 key
+        # Read keystrokes safely (using || true so it never triggers set -e)
+        key=""
+        IFS= read -r -s -n1 key || true
+        
         if [[ $key == $'\x1b' ]]; then
-            read -r -s -n2 key
-            if [[ $key == "[A" ]]; then # Up Arrow
-                ((selected--))
+            # Read 2 more characters with a tiny timeout, safely
+            next_key=""
+            read -r -s -n2 -t 0.05 next_key || true
+            if [[ $next_key == "[A" ]] || [[ $next_key == "OA" ]]; then # Up Arrow
+                selected=$((selected - 1))
                 if [ $selected -lt 0 ]; then
                     selected=$((num_options - 1))
                 fi
-            elif [[ $key == "[B" ]]; then # Down Arrow
-                ((selected++))
+            elif [[ $next_key == "[B" ]] || [[ $next_key == "OB" ]]; then # Down Arrow
+                selected=$((selected + 1))
                 if [ $selected -ge $num_options ]; then
                     selected=0
                 fi
