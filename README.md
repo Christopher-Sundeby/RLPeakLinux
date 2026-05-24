@@ -54,6 +54,18 @@ Download the latest Windows installer from the GitHub Releases page for this rep
 - Supports first-time setup onboarding plus hot-swap flow once mods file exists.
 - Includes load progress modal and in-app tutorial flow.
 
+### Multi-Platform Plugin Compatibility (WIP)
+
+While core support for **Linux** and **macOS** has been integrated into the Rust backend and path resolver systems, multi-platform compatibility for the individual plugins is currently in **Work-In-Progress (WIP)** status:
+
+* **RocketStats Overlay (WIP)**: 
+  * Core MMR tracking, browser-impersonation HTTP sync (`wreq`), and state persistence are functional on Linux & macOS.
+  * Transparent, click-through overlay window behavior may vary depending on your Linux desktop environment, window manager, or Wayland compositor (custom CSS or window rules might be required for perfect transparency).
+* **Workshop Map Loader (WIP)**:
+  * Catalog browsing, map downloads, progress indicators, and directory swaps are fully supported.
+  * Path resolution dynamically maps to common Steam/Heroic paths (`~/.local/share/Steam/`, `~/.steam/steam/`, `~/Games/Heroic/`) and successfully swaps the `Labs_Utopia_P.upk` file in the game directory. 
+  * Ensure your Proton/Wine runner paths match standard structures if using non-standard launcher folders.
+
 ## What RLPeak Is Not
 
 RLPeak does **not**:
@@ -140,11 +152,21 @@ If outdated or unavailable, app routes remain blocked until version checks pass 
 Requirements:
 - Node.js + npm
 - Rust toolchain
-- Tauri prerequisites for Windows
+- **Windows**: [Tauri prerequisites for Windows](https://tauri.app/v1/guides/getting-started/prerequisites#setting-up-windows)
+- **Linux**: [Tauri prerequisites for Linux](https://tauri.app/v1/guides/getting-started/prerequisites#setting-up-linux) (e.g., Debian/Ubuntu):
+  ```bash
+  sudo apt update
+  sudo apt install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+  ```
 
 Build-only prerequisites for the default tracker.gg browser-impersonation path (`mmr-wreq`):
-- NASM (`nasm.exe`) for BoringSSL assembly during compile
-- LLVM/Clang (`libclang.dll`) for bindgen used by `boring-sys2`
+- **Windows**: 
+  - NASM (`nasm.exe`) for BoringSSL assembly during compile
+  - LLVM/Clang (`libclang.dll`) for bindgen used by `boring-sys2`
+- **Linux**: 
+  - `nasm` package
+  - `libclang-dev` or `clang` package
+  - `cmake` (required by `boring-sys2` to compile BoringSSL)
 
 Runtime note for end users:
 - RLPeak packaged app does not require NASM, Rust, Node, Python, or build toolchains at runtime.
@@ -172,14 +194,25 @@ npm run build
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
-Build Windows package:
+### Build Packaged Application
 
-```bash
-npm run package:release
-```
+To compile and package RLPeak into a production-ready installer/executable:
 
-Debug package:
+* **Windows**:
+  ```bash
+  npm run package:release
+  ```
+  *(Produces `.exe` and `.msi` installers in `src-tauri/target/release/bundle/`)*
 
+* **Linux**:
+  ```bash
+  npm run package:release
+  ```
+  *(Produces `.deb` and `.AppImage` packages in `src-tauri/target/release/bundle/`)*
+
+### Debug Package
+
+To package a debug-enabled application bundle:
 ```bash
 npm run package:debug
 ```
