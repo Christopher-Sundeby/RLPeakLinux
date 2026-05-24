@@ -21,11 +21,18 @@ install_rlpeak() {
     echo ""
     echo "=== Installing RLPeak Locally ==="
 
-    # 1. Verify binary is built
+    # 1. Verify binary is built (or compile it if missing)
     if [ ! -f "$BINARY_PATH" ]; then
-        echo "[-] Error: Compiled binary not found at $BINARY_PATH"
-        echo "    Please build the project first by running: npm run package:release"
-        exit 1
+        echo "[!] Compiled binary not found at $BINARY_PATH"
+        echo "[+] Automatically building the project now (this may take a minute)..."
+        echo ""
+        npm run package:release -- --bundles deb
+        echo ""
+        if [ ! -f "$BINARY_PATH" ]; then
+            echo "[-] Error: Build failed. Please verify that all dependencies are installed."
+            exit 1
+        fi
+        echo "[+] Build successful!"
     fi
 
     # 2. Create directories if they don't exist
