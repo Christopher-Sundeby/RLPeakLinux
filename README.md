@@ -215,7 +215,22 @@ To compile and package RLPeak into a production-ready installer/executable:
   ```bash
   npm run package:release
   ```
-  *(Produces `.deb` and `.AppImage` packages in `src-tauri/target/release/bundle/`)*
+  *(Produces `.deb`, `.rpm`, and `.AppImage` packages in `src-tauri/target/release/bundle/`)*
+
+  > [!NOTE]
+  > **Troubleshooting AppImage Build Errors (`failed to run linuxdeploy`)**:
+  > Building AppImages on Linux requires FUSE 2 (`libfuse2` / `fuse2`).
+  > Furthermore, on modern distributions (such as Ubuntu 23.10+, Debian 12+, Arch), AppImage runtimes may fail due to unprivileged user namespace restrictions or AppArmor profiles blocking them.
+  > 
+  > **Workarounds**:
+  > 1. **Build only successful packages** (Debian / RPM) and skip AppImage compilation entirely:
+  >    ```bash
+  >    npm run package:release -- --bundles deb,rpm
+  >    ```
+  > 2. **Allow unprivileged user namespaces** temporarily on your host:
+  >    ```bash
+  >    sudo sysctl -w kernel.unprivileged_userns_clone=1
+  >    ```
 
 ### Debug Package
 
