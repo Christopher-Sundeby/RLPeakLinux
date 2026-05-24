@@ -239,25 +239,33 @@ To package a debug-enabled application bundle:
 npm run package:debug
 ```
 
-### Install Locally as a System Application (Linux/Arch)
+### Local Desktop Launcher Utility (Linux/Arch)
 
-If you are developing or running RLPeak on Linux (including Arch Linux) and want the application to show up with its **application icon** in your system's **search bar / application launcher menu**, we have included a zero-sudo user-wide installer script:
+If you are developing or running RLPeak on Linux (including Arch Linux) and want the application to show up with its **application icon** in your system's **search bar / application launcher menu**, we have included a zero-sudo user-wide interactive script:
 
 1. Compile the release binary first:
    ```bash
    npm run package:release -- --bundles deb
    ```
-2. Run the local desktop installer script:
+2. Run the interactive utility:
    ```bash
    ./install-local-desktop.sh
    ```
 
-This will register the application binary in `~/.local/bin/rlpeak`, install the high-resolution logo to your local icon path, and create a standard Linux `.desktop` entry file at `~/.local/share/applications/rlpeak.desktop`.
-
-To completely **uninstall** RLPeak from your local system:
-```bash
-./uninstall-local-desktop.sh
+Upon running, you will be presented with a simple menu selection:
+```text
+=====================================
+      RLPeak Linux Desktop Tool      
+=====================================
+1) Install RLPeak Locally
+2) Uninstall RLPeak Locally
+3) Exit
+=====================================
 ```
+
+Selecting option `1` will register the application binary in `~/.local/bin/rlpeak`, install the high-resolution logo to your local icon path, and create a standard Linux `.desktop` entry file at `~/.local/share/applications/rlpeak.desktop`. Selecting option `2` will completely uninstall all RLPeak local components.
+
+*Note: For automated/headless scripts, you can bypass the interactive menu using flags: `./install-local-desktop.sh --install` or `./install-local-desktop.sh --uninstall`.*
 
 
 ## QA and Release Workflow
