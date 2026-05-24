@@ -153,11 +153,18 @@ Requirements:
 - Node.js + npm
 - Rust toolchain
 - **Windows**: [Tauri prerequisites for Windows](https://tauri.app/v1/guides/getting-started/prerequisites#setting-up-windows)
-- **Linux**: [Tauri prerequisites for Linux](https://tauri.app/v1/guides/getting-started/prerequisites#setting-up-linux) (e.g., Debian/Ubuntu):
-  ```bash
-  sudo apt update
-  sudo apt install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
-  ```
+- **Linux**: [Tauri prerequisites for Linux](https://tauri.app/v1/guides/getting-started/prerequisites#setting-up-linux)
+  - **Debian/Ubuntu**:
+    ```bash
+    sudo apt update
+    sudo apt install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+    ```
+  - **Arch Linux**:
+    ```bash
+    sudo pacman -Syu
+    sudo pacman -S --needed base-devel curl wget file openssl appmenu-gtk-module libayatana-appindicator webkit2gtk-4.1 librsvg
+    ```
+
 
 Build-only prerequisites for the default tracker.gg browser-impersonation path (`mmr-wreq`):
 - **Windows**: 
