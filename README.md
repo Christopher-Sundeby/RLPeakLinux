@@ -239,6 +239,22 @@ To package a debug-enabled application bundle:
 npm run package:debug
 ```
 
+### Install Locally as a System Application (Linux/Arch)
+
+If you are developing or running RLPeak on Linux (including Arch Linux) and want the application to show up with its **application icon** in your system's **search bar / application launcher menu**, we have included a zero-sudo user-wide installer script:
+
+1. Compile the release binary first:
+   ```bash
+   npm run package:release -- --bundles deb
+   ```
+2. Run the local desktop installer script:
+   ```bash
+   ./install-local-desktop.sh
+   ```
+
+This will register the application binary in `~/.local/bin/rlpeak`, install the high-resolution logo to your local icon path, and create a standard Linux `.desktop` entry file at `~/.local/share/applications/rlpeak.desktop`.
+
+
 ## QA and Release Workflow
 
 - Manual QA: [MANUAL_QA_GUIDE.md](./MANUAL_QA_GUIDE.md)
