@@ -241,16 +241,14 @@ npm run package:debug
 
 ### Local Desktop Launcher Utility (Linux/Arch)
 
-If you are developing or running RLPeak on Linux (including Arch Linux) and want the application to show up with its **application icon** in your system's **search bar / application launcher menu**, we have included a zero-sudo user-wide interactive script:
+If you are developing or running RLPeak on Linux (including Arch Linux) and want the application to show up with its **application icon** in your system's **search bar / application launcher menu**, we have included a zero-sudo user-wide interactive script.
 
-1. Compile the release binary first:
-   ```bash
-   npm run package:release -- --bundles deb
-   ```
-2. Run the interactive utility:
-   ```bash
-   ./install-local-desktop.sh
-   ```
+Simply run the script:
+```bash
+./install-local-desktop.sh
+```
+
+*(Note: The installer automatically checks if you have built the application, and will compile and package it for you first if the binary is missing).*
 
 Upon running, you will be presented with a simple menu selection:
 ```text
